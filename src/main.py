@@ -112,8 +112,6 @@ class Lattice:
         # values of t and s for plot
         t = 1
         s_t = np.linspace(start=0, stop=10, num=100)
-
-        # storage for evals
         rho = np.ndarray((self.L, self.L))
         for i in range(len(s_t)):
             self.build_hamiltonian_ed(t=t, s=s_t[i] * t)
