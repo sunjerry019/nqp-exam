@@ -116,8 +116,8 @@ class lattice:
         # plt.savefig('/condensate_fraction.png')
 
 
-test = lattice(10)
+test = lattice(6)
 #'manual' gives the a) spectrum, anything else gives the c) spectrum
-# test.spectrum("manual", 0.5)
-# test.spectrum("exact", 1)
-test.condensate_frac()
+test.spectrum("manual", 0.5)
+test.spectrum("exact", 1)
+#test.condensate_frac()
