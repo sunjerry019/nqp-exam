@@ -3,6 +3,12 @@ import matplotlib.pyplot as plt
 import scipy.sparse as sp
 import scipy.linalg as linalg
 
+from plotter import Plotter
+
+import sys, os
+
+HOME_FOLDER = os.path.abspath(os.path.dirname(__file__))
+
 
 class lattice:
     def __init__(self, L: int) -> None:
@@ -78,18 +84,21 @@ class lattice:
         # reshape evals list according to the evolution of each eval under ts_frac
         evals_new = np.array([np.take(evals, n, 1) for n in range(self.L + 1)])
 
+        P = Plotter(figsize=(6, 4), nrows=1, ncols=1, usetex=True)
+
         # plot for all evals
         for n in range(len(evals_new)):
             evals_sort = [y for x, y in sorted(zip(ts_frac, evals_new[n]))]
             ts_sort = [x for x, y in sorted(zip(ts_frac, evals_new[n]))]
-            plt.plot(
+            P.ax.plot(
                 ts_sort,
                 evals_sort,
                 label="EV %.0f" % n,
             )
-        plt.legend()
-        plt.show()
-        # plt.savefig('/spectrum_'+str(type)+'.png')
+        P.ax.legend()
+        P.savefig(
+            os.path.join(HOME_FOLDER, "..", "plots", "spectrum_" + str(type) + ".pdf")
+        )
 
     def condensate_frac(self):
         n_0N_frac = []
@@ -110,14 +119,15 @@ class lattice:
             evalues = np.linalg.eigvals(rho)
             n_0N_frac.append(max(evalues) / np.trace(rho))
 
+        P = Plotter(figsize=(6, 4), nrows=1, ncols=1)
+
         ts_frac = [ts[i][1] / ts[i][0] for i in range(ts.shape[0])]
-        plt.scatter(ts_frac, n_0N_frac, s=3)
-        plt.show()
-        # plt.savefig('/condensate_fraction.png')
+        P.ax.scatter(ts_frac, n_0N_frac, s=3)
+        P.savefig(os.path.join(HOME_FOLDER, "..", "plots", "condensate_fraction.pdf"))
 
 
-test = lattice(6)
+test = lattice(4)
 #'manual' gives the a) spectrum, anything else gives the c) spectrum
 test.spectrum("manual", 0.5)
 test.spectrum("exact", 1)
-#test.condensate_frac()
+test.condensate_frac()
