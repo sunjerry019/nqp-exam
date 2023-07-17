@@ -61,7 +61,7 @@ class Lattice:
                 + self.b_down_j(j) @ self.b_down_j(self.L - 1).getH()
             )
 
-    def spectrum(self, type: str, stepsize: float):
+    def spectrum(self, type: str, stepsize: float, shareplot: bool = True):
         # values of t and s for plot
         t = 1
         s_t = np.power(10, np.linspace(start=-2, stop=1, num=100))
@@ -79,23 +79,30 @@ class Lattice:
                 evals[i] = np.sort(np.linalg.eigvals(test.Hamiltonian))
 
         # reshape evals list according to the evolution of each eval under t_s
-        # evals_new = np.array([np.take(evals, n, 1) for n in range(self.L + 1)])
         evals_new = evals.T
 
         num_eigv = len(evals_new)
-        P = Plotter(figsize=(6, 3 * num_eigv), nrows=num_eigv, ncols=1, usetex=True)
+        if shareplot == True:
+            P = Plotter(figsize=(6, 4), nrows=1, ncols=1, usetex=True)
+            for n in range(num_eigv):
+                P.ax.plot(
+                    s_t,
+                    evals_new[n],
+                    label=f"EV {n}",
+                )
+                P.ax.legend()
+                P.ax.set_xscale("log")
+        else:
+            P = Plotter(figsize=(6, 3 * num_eigv), nrows=num_eigv, ncols=1, usetex=True)
+            for n in range(num_eigv):
+                P.ax[n].plot(
+                    s_t,
+                    evals_new[n],
+                    label=f"EV {n}",
+                )
+                P.ax[n].legend()
+                P.ax[n].set_xscale("log")
 
-        # plot for all evals
-        for n in range(num_eigv):
-            # evals_sort = [y for x, y in sorted(zip(t_s, evals_new[n]))]
-            # ts_sort = [x for x, y in sorted(zip(t_s, evals_new[n]))]
-            P.ax[n].plot(
-                s_t,
-                evals_new[n],
-                label=f"EV {n}",
-            )
-            P.ax[n].legend()
-            P.ax[n].set_xscale("log")
         P.savefig(
             os.path.join(HOME_FOLDER, "..", "plots", "spectrum_" + str(type) + ".pdf")
         )
@@ -128,6 +135,6 @@ class Lattice:
 if __name__ == "__main__":
     test = Lattice(4)
     #'manual' gives the a) spectrum, anything else gives the c) spectrum
-    test.spectrum("manual", 0.5)
-    test.spectrum("exact", 1)
+    test.spectrum("manual", 0.5, True)
+    test.spectrum("exact", 1, True)
     test.condensate_frac()
