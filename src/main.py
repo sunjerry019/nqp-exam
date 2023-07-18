@@ -288,7 +288,7 @@ class Lattice:
 
 
 if __name__ == "__main__":
-    L = 10
+    L = 6
     # "dense" uses ndarray, "sparse" uses scipy.sparse.coo_matrix
     test = Lattice(L, "dense")
     # "manual" gives the a) spectrum, anything else gives the c) spectrum
