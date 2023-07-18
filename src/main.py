@@ -76,7 +76,7 @@ class Lattice:
         t = 1
         s_t = np.power(10, np.linspace(start=-2, stop=1, num=100))
 
-        # get eval for all ts combinations
+        # manual for the a) plot
         if type == "manual":
             evals = np.ndarray((len(s_t), self.L + 1))
 
@@ -84,7 +84,9 @@ class Lattice:
                 self.build_hamiltonian_manual(t, s=s_t[i] * t)
                 evals[i] = np.real(np.sort(np.linalg.eigvals(self.Hamiltonian_manual)))
 
+        # exact for the c) plot
         else:
+            # ndarray
             if self.matrix_type == "sparse":
                 evals = []
                 for i in range(len(s_t)):
@@ -96,6 +98,7 @@ class Lattice:
 
                     self.Hamiltonian = self.Hamiltonian.toarray()
                 evals = np.array(evals)
+            # scipy.sparse
             else:
                 evals = np.ndarray((len(s_t), 2**self.L))
                 for i in range(len(s_t)):
