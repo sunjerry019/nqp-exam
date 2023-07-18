@@ -61,8 +61,6 @@ class Lattice:
                     + self.b_down_j(j) @ self.b_down_j(0).getH()
                 )
             else:
-                # print(j)
-                # print(self.b_down_j(j + 1).shape)
                 self.Hamiltonian += -t * (
                     self.b_down_j(j).getH() @ self.b_down_j(j + 1)
                     + self.b_down_j(j) @ self.b_down_j(j + 1).getH()
@@ -219,8 +217,8 @@ class Lattice:
                     evalues, evectors = np.linalg.eig(self.Hamiltonian)
 
                 ground = evectors[:, np.where(evalues == min(evalues))][:, :, 0]
-                for j in range(self.L):
-                    for l in range(self.L):
+                for j in range(self.L + 1):
+                    for l in range(self.L + 1):
                         p = ground.conj().T @ self.correlator(j, l) @ ground
                         rho[j][l] = np.real(p[0, 0])
 
@@ -236,7 +234,7 @@ class Lattice:
             + " matrices"
         )
         G.ax.set_xlabel(r"$s/t$")
-        G.ax.set_ylabel(r"$E_n$")
+        G.ax.set_ylabel(r"$\frac{n_0}{N}$")
         G.ax.legend()
         G.savefig(os.path.join(HOME_FOLDER, "..", "plots", "condensate_fraction.png"))
         self.__init__(L_init, self.matrix_type)
