@@ -18,6 +18,7 @@ class Lattice:
 
     # Hamiltonian in h operator basis
     def build_hamiltonian_manual(self, t: float, s: float) -> None:
+        self.Hamiltonian_manual.fill(0)
         for i in range(self.L + 1):
             for j in range(self.L + 1):
                 if i != j:
@@ -43,6 +44,7 @@ class Lattice:
         return self.b_down_j(j).getH() @ self.b_down_j(l)
 
     def build_hamiltonian_ed(self, t: float, s: float) -> None:
+        self.Hamiltonian.fill(0)
         for j in range(self.L - 1):
             # PBC
             if j == self.L - 2:
@@ -71,12 +73,12 @@ class Lattice:
             evals = np.ndarray((len(s_t), self.L + 1))
             for i in range(len(s_t)):
                 self.build_hamiltonian_manual(t, s=s_t[i] * t)
-                evals[i] = np.sort(np.linalg.eigvals(test.Hamiltonian_manual))
+                evals[i] = np.real(np.sort(np.linalg.eigvals(test.Hamiltonian_manual)))
         else:
             evals = np.ndarray((len(s_t), 2**self.L))
             for i in range(len(s_t)):
                 self.build_hamiltonian_ed(t, s=s_t[i] * t)
-                evals[i] = np.sort(np.linalg.eigvals(test.Hamiltonian))
+                evals[i] = np.real(np.sort(np.linalg.eigvals(test.Hamiltonian)))
 
         # reshape evals list according to the evolution of each eval under t_s
         evals_new = evals.T
@@ -92,6 +94,9 @@ class Lattice:
                 )
                 P.ax.legend()
                 P.ax.set_xscale("log")
+                P.ax.set_title("Spectrum " + str(type) + f", System size: {self.L}")
+                P.ax.set_xlabel(r"$s/t$")
+                P.ax.set_ylabel(r"$E_n$")
         else:
             P = Plotter(figsize=(6, 3 * num_eigv), nrows=num_eigv, ncols=1, usetex=True)
             for n in range(num_eigv):
@@ -102,36 +107,52 @@ class Lattice:
                 )
                 P.ax[n].legend()
                 P.ax[n].set_xscale("log")
+                P.ax.set_title("Spectrum " + str(type) + f", System size: {self.L}")
+                P.ax.set_xlabel(r"$s/t$")
+                P.ax.set_ylabel(r"$E_n$")
 
         P.savefig(
             os.path.join(HOME_FOLDER, "..", "plots", "spectrum_" + str(type) + ".pdf")
         )
 
     def condensate_frac(self):
-        n_0N_frac = []
-        # values of t and s for plot
-        t = 1
-        s_t = np.linspace(start=0, stop=10, num=100)
-        rho = np.ndarray((self.L, self.L))
-        for i in range(len(s_t)):
-            self.build_hamiltonian_ed(t=t, s=s_t[i] * t)
-            evalues, evectors = np.linalg.eig(test.Hamiltonian)
-            ground = evectors[:, np.where(evalues == min(evalues))][:, :, 0]
-            for j in range(self.L):
-                for l in range(self.L):
-                    p = ground.conj().T @ self.correlator(j, l) @ ground
-                    rho[j][l] = np.real(p[0, 0])
+        assert self.L >= 3, "L should be larger than 2 for reasonable result"
+        L_init = self.L
+        # Now loops over all L up to the L that the class was initiated with
+        G = Plotter(figsize=(6, 4), nrows=1, ncols=1)
+        for L in range(3, L_init + 1):
+            self.__init__(L)
+            n_0N_frac = []
+            # values of t and s for plot
+            t = 1
+            s_t = np.power(10, np.linspace(start=-3, stop=1, num=200))
+            for i in range(len(s_t)):
+                rho = np.ndarray((self.L, self.L))
+                self.build_hamiltonian_ed(t=t, s=s_t[i] * t)
+                evalues, evectors = np.linalg.eig(test.Hamiltonian)
+                ground = evectors[:, np.where(evalues == min(evalues))][:, :, 0]
 
-            evalues = np.linalg.eigvals(rho)
-            n_0N_frac.append(max(evalues) / np.trace(rho))
+                for j in range(self.L):
+                    for l in range(self.L):
+                        p = ground.conj().T @ self.correlator(j, l) @ ground
+                        rho[j][l] = np.real(p[0, 0])
 
-        P = Plotter(figsize=(6, 4), nrows=1, ncols=1)
-        P.ax.scatter(s_t, n_0N_frac, s=3)
-        P.savefig(os.path.join(HOME_FOLDER, "..", "plots", "condensate_fraction.pdf"))
+                evalues_rho = np.linalg.eigvals(rho)
+                n_0N_frac.append(max(evalues_rho) / np.trace(rho))
+            G.ax.scatter(s_t, n_0N_frac, s=3, label=f"L = {L}")
+
+        G.ax.set_xscale("log")
+        G.ax.set_ylim(0, 1)
+        G.ax.set_title(r"Condensate fraction $\frac{n_0}{N}$")
+        G.ax.set_xlabel(r"$s/t$")
+        G.ax.set_ylabel(r"$E_n$")
+        G.ax.legend()
+        G.savefig(os.path.join(HOME_FOLDER, "..", "plots", "condensate_fraction.pdf"))
+        self.__init__(L_init)
 
 
 if __name__ == "__main__":
-    test = Lattice(4)
+    test = Lattice(6)
     #'manual' gives the a) spectrum, anything else gives the c) spectrum
     test.spectrum("manual", 0.5, True)
     test.spectrum("exact", 1, True)
