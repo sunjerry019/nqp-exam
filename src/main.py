@@ -14,13 +14,16 @@ HOME_FOLDER = os.path.abspath(os.path.dirname(__file__))
 
 class Lattice:
     def __init__(self, L: int, type: str) -> None:
+        #str that store whether to use dense or spars matrices
         self.matrix_type = type
         self.L = L
         self.Hamiltonian_manual = np.zeros((L + 1, L + 1))
         self.Hamiltonian = np.zeros((2 ** (L), 2 ** (L)), dtype=np.complex128)
 
-    # Hamiltonian in h operator basis
     def build_hamiltonian_manual(self, t: float, s: float) -> None:
+        """
+        builds the "handmade" Hamiltonian for a) in the h operator basis
+        """
         # clear Hamiltonian
         self.Hamiltonian_manual = np.zeros((self.L + 1, self.L + 1))
 
@@ -33,23 +36,38 @@ class Lattice:
                         self.Hamiltonian_manual[i][j] = -s
 
     def b_down_single(self) -> np.matrix:
+        """
+        single site b operator
+        """
         s1 = 0.5 * np.matrix([[0, 1], [1, 0]])
         s2 = 0.5 * np.matrix([[0, -1j], [1j, 0]])
         op = s1 + 1j * s2
         return op
 
     def expand_operator(self, op: np.matrix, j: int) -> np.matrix:
+        """
+        expansion func that kroneckers an operator at site j up to the full space
+        """
         op = np.kron(np.eye(2**j, 2**j), op)
         op = np.kron(op, np.eye(2 ** (self.L - j - 1), 2 ** (self.L - j - 1)))
         return op
 
     def b_down_j(self, j: int) -> np.matrix:
+        """
+        builds full Hilbert space b operator on site j. use .getH() on this b to provide b^dagger
+        """
         return self.expand_operator(self.b_down_single(), j)
 
     def correlator(self, j: int, l: int) -> np.matrix:
+        """
+        correlator for d)
+        """
         return self.b_down_j(j).getH() @ self.b_down_j(l)
 
     def build_hamiltonian_ed(self, t: float, s: float) -> None:
+        """
+        buils Hamiltonian from b operators (which corresponds to S+ S- basis)
+        """
         # clear Hamiltonian
         self.Hamiltonian = np.zeros((2 ** (self.L), 2 ** (self.L)), dtype=np.complex128)
 
@@ -72,6 +90,10 @@ class Lattice:
             )
 
     def spectrum(self, type: str, rep: int, shareplot: bool = True) -> None:
+        """
+        provides plots for a) and c) depending on the "type" argument
+
+        """
         # values of t and s for plot
         t = 1
         s_t = np.power(10, np.linspace(start=-2, stop=1, num=100))
@@ -85,7 +107,7 @@ class Lattice:
                 evals[i] = np.real(np.sort(np.linalg.eigvals(self.Hamiltonian_manual)))
 
         # exact for the c) plot
-        else:
+        elif type == "exact"
             # ndarray
             if self.matrix_type == "sparse":
                 evals = []
@@ -99,22 +121,29 @@ class Lattice:
                     self.Hamiltonian = self.Hamiltonian.toarray()
                 evals = np.array(evals)
             # scipy.sparse
-            else:
+            elif self.matrix_type == "dense":
                 evals = np.ndarray((len(s_t), 2**self.L))
                 for i in range(len(s_t)):
                     self.build_hamiltonian_ed(t, s=s_t[i] * t)
                     evals[i] = np.real(np.sort(np.linalg.eigvals(self.Hamiltonian)))
+            else:
+            raise Exception("matrix_type can either be `dense` or `sparse`")
+        else:
+            raise Exception("type can either be `manual` or `exact`") 
 
         # reshape evals list according to the evolution of each eval under t_s
         evals_new = evals.T
-
+        
         num_eigv = len(evals_new)
+        # put all EV's on the same plot
+        # Plot routine that colors the eigenvalues according to a specific coloring cycle 
+        # This allows to i.e. color all odd and even n Eigenvalues E_n in the same color or every third, fourth, ...
         if shareplot == True:
             P = Plotter(figsize=(6, 4), nrows=1, ncols=1, usetex=True)
             n=0
             # rep assigns the number after which to cycle back to the starting color
             while n <= math.ceil(num_eigv/rep):
-                #colors = ['b','g','r','c','m']
+                # color list has something like 12 entries, should suffice
                 colors = [mcolors.TABLEAU_COLORS[str(a)] for a in mcolors.TABLEAU_COLORS]
                 for i in range(rep):
                     #first EV is black
@@ -156,6 +185,7 @@ class Lattice:
                             )
                 n+=1
 
+            # make plot fancy
             P.ax.legend()
             P.ax.set_xscale("log")
             P.ax.set_title(
@@ -168,6 +198,8 @@ class Lattice:
             )
             P.ax.set_xlabel(r"$s/t$")
             P.ax.set_ylabel(r"$E_n$")
+
+        # plot every EV on separate subplot (better with pdf)
         else:
             P = Plotter(figsize=(6, 3 * num_eigv), nrows=num_eigv, ncols=1, usetex=True)
             for n in range(num_eigv):
@@ -194,16 +226,24 @@ class Lattice:
         )
 
     def condensate_frac(self) -> None:
+        """
+        provides plot for d)
+        """
         assert self.L >= 3, "L should be larger than 2 for reasonable result"
+        #stores initial L value
         L_init = self.L
-        # Now loops over all L up to the L that the class was initiated with
+        #prepare plot
         G = Plotter(figsize=(6, 4), nrows=1, ncols=1)
+        # Now loops over all L up to the L that the class was initiated with
         for L in range(3, L_init + 1):
+            # adjust number of sites
             self.__init__(L, self.matrix_type)
+            # storage for the cond frac of this L
             n_0N_frac = []
             # values of t and s for plot
             t = 1
             s_t = np.power(10, np.linspace(start=-3, stop=1, num=200))
+            # get pho for every values of s(t)
             for i in range(len(s_t)):
                 rho = np.ndarray((self.L, self.L))
                 self.build_hamiltonian_ed(t=t, s=s_t[i] * t)
@@ -213,10 +253,15 @@ class Lattice:
                     evalues, evectors = sp.linalg.eigsh(self.Hamiltonian)
                     self.Hamiltonian = self.Hamiltonian.toarray
 
-                else:
+                elif self.matrix_type == "dense":
                     evalues, evectors = np.linalg.eig(self.Hamiltonian)
+                
+                else:
+                    raise Exception("matrix_type can either be `dense` or `sparse`")
 
+                # get ground state of Hamiltonian
                 ground = evectors[:, np.where(evalues == min(evalues))][:, :, 0]
+                # fill rho matrix for this s(t)
                 for j in range(self.L + 1):
                     for l in range(self.L + 1):
                         p = ground.conj().T @ self.correlator(j, l) @ ground
@@ -224,8 +269,10 @@ class Lattice:
 
                 evalues_rho = np.linalg.eigvals(rho)
                 n_0N_frac.append(max(evalues_rho) / np.trace(rho))
+            # add the values for this L to plot 
             G.ax.scatter(s_t, n_0N_frac, s=3, label=f"L = {L}")
 
+        # Plotting
         G.ax.set_xscale("log")
         G.ax.set_ylim(0, 1)
         G.ax.set_title(
@@ -237,6 +284,7 @@ class Lattice:
         G.ax.set_ylabel(r"$\frac{n_0}{N}$")
         G.ax.legend()
         G.savefig(os.path.join(HOME_FOLDER, "..", "plots", "condensate_fraction.png"))
+        # revert to original L just for safety
         self.__init__(L_init, self.matrix_type)
 
 
