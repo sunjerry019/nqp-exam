@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.sparse as sp
 import scipy.linalg as linalg
+import math
+import matplotlib.colors as mcolors
 
 from plotter import Plotter
 
@@ -71,7 +73,7 @@ class Lattice:
                 + self.b_down_j(j) @ self.b_down_j(self.L - 1).getH()
             )
 
-    def spectrum(self, type: str, stepsize: float, shareplot: bool = True) -> None:
+    def spectrum(self, type: str, rep: int, shareplot: bool = True) -> None:
         # values of t and s for plot
         t = 1
         s_t = np.power(10, np.linspace(start=-2, stop=1, num=100))
@@ -111,24 +113,63 @@ class Lattice:
         num_eigv = len(evals_new)
         if shareplot == True:
             P = Plotter(figsize=(6, 4), nrows=1, ncols=1, usetex=True)
-            for n in range(num_eigv):
-                P.ax.plot(
-                    s_t,
-                    evals_new[n],
-                    label=f"EV {n}",
-                )
-                P.ax.legend()
-                P.ax.set_xscale("log")
-                P.ax.set_title(
-                    "Spectrum "
-                    + str(type)
-                    + ", "
-                    + str(self.matrix_type)
-                    + " matrices"
-                    + f", System size: {self.L}"
-                )
-                P.ax.set_xlabel(r"$s/t$")
-                P.ax.set_ylabel(r"$E_n$")
+            n=0
+            # rep assigns the number after which to cycle back to the starting color
+            while n <= math.ceil(num_eigv/rep):
+                #colors = ['b','g','r','c','m']
+                colors = [mcolors.TABLEAU_COLORS[str(a)] for a in mcolors.TABLEAU_COLORS]
+                for i in range(rep):
+                    #first EV is black
+                    if n*rep+i == 0:
+                        P.ax.plot(
+                                s_t,
+                                evals_new[n*rep+i],
+                                label=f"EV {n*rep+i}",
+                                color = 'k',
+                                lw = 1.5
+                            )
+                    # all intermediate EV's
+                    elif n*rep+i < num_eigv-1:
+                        #plot with label for first round
+                        if n*rep+i <= rep:
+                            P.ax.plot(
+                                s_t,
+                                evals_new[n*rep+i],
+                                label=f"EV {n*rep+i} +"+str(rep)+"n" ,
+                                color = colors[i],
+                                lw = 0.7
+                            )
+                        #plot without label for the repeats
+                        else:
+                            P.ax.plot(
+                                s_t,
+                                evals_new[n*rep+i],
+                                color = colors[i],
+                                lw = 0.7
+                            )
+                    #last EV is magenta
+                    elif n*rep+i == num_eigv-1:
+                        P.ax.plot(
+                                s_t,
+                                evals_new[n*rep+i],
+                                label = "Last EV",
+                                color = 'm',
+                                lw = 1.5
+                            )
+                n+=1
+
+            P.ax.legend()
+            P.ax.set_xscale("log")
+            P.ax.set_title(
+                "Spectrum "
+                + str(type)
+                + ", "
+                + str(self.matrix_type)
+                + " matrices"
+                + f", System size: {self.L}"
+            )
+            P.ax.set_xlabel(r"$s/t$")
+            P.ax.set_ylabel(r"$E_n$")
         else:
             P = Plotter(figsize=(6, 3 * num_eigv), nrows=num_eigv, ncols=1, usetex=True)
             for n in range(num_eigv):
@@ -137,21 +178,21 @@ class Lattice:
                     evals_new[n],
                     label=f"EV {n}",
                 )
-                P.ax[n].legend()
-                P.ax[n].set_xscale("log")
-                P.ax.set_title(
-                    "Spectrum "
-                    + str(type)
-                    + ", "
-                    + str(self.matrix_type)
-                    + " matrices"
-                    + f", System size: {self.L}"
-                )
-                P.ax.set_xlabel(r"$s/t$")
-                P.ax.set_ylabel(r"$E_n$")
+            P.ax[n].legend()
+            P.ax[n].set_xscale("log")
+            P.ax.set_title(
+                "Spectrum "
+                + str(type)
+                + ", "
+                + str(self.matrix_type)
+                + " matrices"
+                + f", System size: {self.L}"
+            )
+            P.ax.set_xlabel(r"$s/t$")
+            P.ax.set_ylabel(r"$E_n$")
 
         P.savefig(
-            os.path.join(HOME_FOLDER, "..", "plots", "spectrum_" + str(type) + ".pdf")
+            os.path.join(HOME_FOLDER, "..", "plots", "spectrum_" + str(type) + ".png")
         )
 
     def condensate_frac(self) -> None:
@@ -197,15 +238,15 @@ class Lattice:
         G.ax.set_xlabel(r"$s/t$")
         G.ax.set_ylabel(r"$E_n$")
         G.ax.legend()
-        G.savefig(os.path.join(HOME_FOLDER, "..", "plots", "condensate_fraction.pdf"))
+        G.savefig(os.path.join(HOME_FOLDER, "..", "plots", "condensate_fraction.png"))
         self.__init__(L_init, self.matrix_type)
 
 
 if __name__ == "__main__":
-    L = 8
+    L = 10
     # "dense" uses ndarray, "sparse" uses scipy.sparse.coo_matrix
     test = Lattice(L, "dense")
     # "manual" gives the a) spectrum, anything else gives the c) spectrum
-    test.spectrum("manual", 0.5, True)
-    test.spectrum("exact", 1, True)
-    test.condensate_frac()
+    test.spectrum("manual", 2, True)
+    test.spectrum("exact", 2, True)
+    #test.condensate_frac()
