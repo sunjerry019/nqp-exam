@@ -1,0 +1,2 @@
+/home/s/Simon.Krumm/Documents/nqp/nqp-exam/src/main.py:284: RuntimeWarning: invalid value encountered in double_scalars
+  n_0N_frac.append([s_t[i], max(evalues_rho) / N, N/L,L])

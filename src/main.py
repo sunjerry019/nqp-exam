@@ -318,7 +318,7 @@ class Lattice:
 
 
 if __name__ == "__main__":
-    L = 9
+    L = 13
     # "dense" uses ndarray, "sparse" uses scipy.sparse.coo_matrix
     test = Lattice(L, "dense")
 
