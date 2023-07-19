@@ -14,7 +14,7 @@ HOME_FOLDER = os.path.abspath(os.path.dirname(__file__))
 
 class Lattice:
     def __init__(self, L: int, type: str) -> None:
-        #str that store whether to use dense or spars matrices
+        # str that store whether to use dense or spars matrices
         self.matrix_type = type
         self.L = L
         self.Hamiltonian_manual = np.zeros((L + 1, L + 1))
@@ -108,7 +108,7 @@ class Lattice:
                 evals[i] = np.real(np.sort(np.linalg.eigvals(self.Hamiltonian_manual)))
 
         # exact for the c) plot
-        elif type == "exact":
+        elif type == "exact"::
             # ndarray
             if self.matrix_type == "sparse":
                 evals = []
@@ -128,63 +128,62 @@ class Lattice:
                     self.build_hamiltonian_ed(t, s=s_t[i] * t)
                     evals[i] = np.real(np.sort(np.linalg.eigvalsh(self.Hamiltonian)))
             else:
-                raise Exception("matrix_type can either be `dense` or `sparse`")
+                    raise Exception("matrix_type can either be `dense` or `sparse`")
         else:
-            raise Exception("type can either be `manual` or `exact`") 
+            raise Exception("type can either be `manual` or `exact`")
 
         # reshape evals list according to the evolution of each eval under t_s
         evals_new = evals.T
-        
+
         num_eigv = len(evals_new)
         # put all EV's on the same plot
-        # Plot routine that colors the eigenvalues according to a specific coloring cycle 
+        # Plot routine that colors the eigenvalues according to a specific coloring cycle
         # This allows to i.e. color all odd and even n Eigenvalues E_n in the same color or every third, fourth, ...
         if shareplot == True:
             P = Plotter(figsize=(6, 4), nrows=1, ncols=1, usetex=True)
-            n=0
+            n = 0
             # rep assigns the number after which to cycle back to the starting color
-            while n <= math.ceil(num_eigv/rep):
+            while n <= math.ceil(num_eigv / rep):
                 # color list has something like 12 entries, should suffice
-                colors = [mcolors.TABLEAU_COLORS[str(a)] for a in mcolors.TABLEAU_COLORS]
+                colors = [
+                    mcolors.TABLEAU_COLORS[str(a)] for a in mcolors.TABLEAU_COLORS
+                ]
                 for i in range(rep):
-                    #first EV is black
-                    if n*rep+i == 0:
+                    # first EV is black
+                    if n * rep + i == 0:
                         P.ax.plot(
-                                s_t,
-                                evals_new[n*rep+i],
-                                label=f"EV {n*rep+i}",
-                                color = 'k',
-                                lw = 1.5
-                            )
+                            s_t,
+                            evals_new[n * rep + i],
+                            label=f"EV {n*rep+i}",
+                            color="k",
+                            lw=1.5,
+                        )
                     # all intermediate EV's
-                    elif n*rep+i < num_eigv-1:
-                        #plot with label for first round
-                        if n*rep+i <= rep:
+                    elif n * rep + i < num_eigv - 1:
+                        # plot with label for first round
+                        if n * rep + i <= rep:
                             P.ax.plot(
                                 s_t,
-                                evals_new[n*rep+i],
-                                label=f"EV {n*rep+i} +"+str(rep)+"n" ,
-                                color = colors[i],
-                                lw = 0.7
+                                evals_new[n * rep + i],
+                                label=f"EV {n*rep+i} +" + str(rep) + "n",
+                                color=colors[i],
+                                lw=0.7,
                             )
-                        #plot without label for the repeats
+                        # plot without label for the repeats
                         else:
                             P.ax.plot(
-                                s_t,
-                                evals_new[n*rep+i],
-                                color = colors[i],
-                                lw = 0.7
+                                s_t, evals_new[n * rep + i], color=colors[i], lw=0.7
                             )
-                    #last EV is magenta
-                    elif n*rep+i == num_eigv-1:
+                    # last EV is magenta
+                    elif n * rep + i == num_eigv - 1:
                         P.ax.plot(
-                                s_t,
-                                evals_new[n*rep+i],
-                                label = "Last EV",
-                                color = 'm',
-                                lw = 1.5
-                            )
-                n+=1
+                            s_t,
+                            evals_new[n * rep + i],
+                            label="Last EV",
+                            color="m",
+                            lw=1.5,
+                        )
+                n += 1
 
             # make plot fancy
             P.ax.legend()
@@ -231,9 +230,9 @@ class Lattice:
         provides plot for d)
         """
         assert self.L >= 3, "L should be larger than 2 for reasonable result"
-        #stores initial L value
+        # stores initial L value
         L_init = self.L
-        #prepare plot
+        # prepare plot
         G = Plotter(figsize=(6, 4), nrows=1, ncols=1)
         # Now loops over all L up to the L that the class was initiated with
         for L in range(1,L_init + 1):
@@ -256,7 +255,7 @@ class Lattice:
 
                 elif self.matrix_type == "dense":
                     evalues, evectors = np.linalg.eig(self.Hamiltonian)
-                
+
                 else:
                     raise Exception("matrix_type can either be `dense` or `sparse`")
 
@@ -273,7 +272,7 @@ class Lattice:
 
                 evalues_rho = np.linalg.eigvals(rho)
                 n_0N_frac.append(max(evalues_rho) / np.trace(rho))
-            # add the values for this L to plot 
+            # add the values for this L to plot
             G.ax.scatter(s_t, n_0N_frac, s=3, label=f"L = {L}")
 
         # Plotting
