@@ -18,7 +18,7 @@ class Lattice:
         self.matrix_type = type
         self.L = L
         self.Hamiltonian_manual = np.zeros((L + 1, L + 1))
-        self.Hamiltonian = np.zeros((2 ** (L), 2 ** (L)), dtype=np.complex128)
+        self.Hamiltonian = np.zeros((2 ** (L + 1), 2 ** (L + 1)), dtype=np.complex128)
 
     def build_hamiltonian_manual(self, t: float, s: float) -> None:
         """
@@ -49,7 +49,8 @@ class Lattice:
         expansion func that kroneckers an operator at site j up to the full space
         """
         op = np.kron(np.eye(2**j, 2**j), op)
-        op = np.kron(op, np.eye(2 ** (self.L - j - 1), 2 ** (self.L - j - 1)))
+        op = np.kron(op, np.eye(2 ** (self.L - j), 2 ** (self.L - j)))
+
         return op
 
     def b_down_j(self, j: int) -> np.matrix:
@@ -57,7 +58,6 @@ class Lattice:
         builds full Hilbert space b operator on site j. use .getH() on this b to provide b^dagger
         """
         return self.expand_operator(self.b_down_single(), j)
-        return op
 
     def correlator(self, j: int, l: int) -> np.matrix:
         """
@@ -70,7 +70,9 @@ class Lattice:
         buils Hamiltonian from b operators (which corresponds to S+ S- basis)
         """
         # clear Hamiltonian
-        self.Hamiltonian = np.zeros((2 ** (self.L), 2 ** (self.L)), dtype=np.complex128)
+        self.Hamiltonian = np.zeros(
+            (2 ** (self.L + 1), 2 ** (self.L + 1)), dtype=np.complex128
+        )
 
         for j in range(self.L - 1):
             # PBC
@@ -86,8 +88,8 @@ class Lattice:
                 )
             # center hop part doesnt need any PBC separation
             self.Hamiltonian += -s * (
-                self.b_down_j(j).getH() @ self.b_down_j(self.L - 1)
-                + self.b_down_j(j) @ self.b_down_j(self.L - 1).getH()
+                self.b_down_j(j).getH() @ self.b_down_j(self.L)
+                + self.b_down_j(j) @ self.b_down_j(self.L).getH()
             )
 
     def spectrum(self, type: str, rep: int, shareplot: bool = True) -> None:
@@ -116,19 +118,21 @@ class Lattice:
                     self.build_hamiltonian_ed(t, s=s_t[i] * t)
                     self.Hamiltonian = sp.coo_matrix(self.Hamiltonian)
 
-                    eigs, evectors = sp.linalg.eigsh(self.Hamiltonian)
-                    evals.append(np.real(np.sort(eigs)))
+                    eigs, evectors = sp.linalg.eigsh(
+                        self.Hamiltonian, which="SM", k=self.Hamiltonian.shape[0] - 2
+                    )
+                    evals.append(eigs)
 
                     self.Hamiltonian = self.Hamiltonian.toarray()
                 evals = np.array(evals)
             # scipy.sparse
             elif self.matrix_type == "dense":
-                evals = np.ndarray((len(s_t), 2**self.L))
+                evals = np.ndarray((len(s_t), 2 ** (self.L + 1)))
                 for i in range(len(s_t)):
                     self.build_hamiltonian_ed(t, s=s_t[i] * t)
                     evals[i] = np.real(np.sort(np.linalg.eigvalsh(self.Hamiltonian)))
             else:
-                    raise Exception("matrix_type can either be `dense` or `sparse`")
+                raise Exception("matrix_type can either be `dense` or `sparse`")
         else:
             raise Exception("type can either be `manual` or `exact`")
 
@@ -229,102 +233,155 @@ class Lattice:
         """
         provides plot for d)
         """
-        assert self.L >= 3, "L should be larger than 2 for reasonable result"
         # stores initial L value
         L_init = self.L
         # prepare plot
-        G = Plotter(figsize=(6, 4), nrows=1, ncols=1)
+        G = Plotter(figsize=(6, 12), nrows=2, ncols=1)
         rho_values = []
         # storage for the cond frac of this L
         n_0N_frac = []
         # Now loops over all L up to the L that the class was initiated with
-        for L in range(1,L_init + 1):
-            if L % 2 !=0:
-                # adjust number of sites
-                self.__init__(L, self.matrix_type)
-                # values of t and s for plot
-                t = 1
-                s_t = np.power(10, np.linspace(start=-3, stop=1, num=200))
-                # get pho for every values of s(t)
-                for i in range(len(s_t)):
-                    rho = np.ndarray((self.L, self.L))
-                    self.build_hamiltonian_ed(t=t, s=s_t[i] * t)
+        for L in range(1, L_init + 1):
+            # adjust number of sites
+            self.__init__(L, self.matrix_type)
+            # values of t and s for plot
+            t = 1
+            s_t = np.power(10, np.linspace(start=-3, stop=1, num=200))
+            # get pho for every values of s(t)
+            for i in range(len(s_t)):
+                rho = np.ndarray((self.L, self.L))
+                self.build_hamiltonian_ed(t=t, s=s_t[i] * t)
 
-                    if self.matrix_type == "sparse":
-                        self.Hamiltonian = sp.coo_matrix(self.Hamiltonian)
-                        evalues, evectors = sp.linalg.eigsh(self.Hamiltonian)
-                        self.Hamiltonian = self.Hamiltonian.toarray
+                if self.matrix_type == "sparse":
+                    self.Hamiltonian = sp.coo_matrix(self.Hamiltonian)
+                    evalues, evectors = sp.linalg.eigsh(self.Hamiltonian)
+                    self.Hamiltonian = self.Hamiltonian.toarray
 
-                    elif self.matrix_type == "dense":
-                        evalues, evectors = np.linalg.eig(self.Hamiltonian)
+                elif self.matrix_type == "dense":
+                    evalues, evectors = np.linalg.eig(self.Hamiltonian)
 
-                    else:
-                        raise Exception("matrix_type can either be `dense` or `sparse`")
+                else:
+                    raise Exception("matrix_type can either be `dense` or `sparse`")
 
-                    # get ground state of Hamiltonian
-                    ground = evectors[:, np.where(evalues == min(evalues))][:, :, 0]
-                    
+                # get ground state of Hamiltonian
+                ground = evectors[:, np.where(evalues == min(evalues))][:, :, 0]
 
-                    # fill rho matrix for this s(t)
-                    for j in range(self.L):
-                        for l in range(self.L):
-                            corr = self.correlator(j,l)
-                            p = ground.conj().T @ corr @ ground
-                            rho[j][l] = np.real(p[0, 0])
+                # fill rho matrix for this s(t)
+                for j in range(self.L):
+                    for l in range(self.L):
+                        corr = self.correlator(j, l)
+                        p = ground.conj().T @ corr @ ground
+                        rho[j][l] = np.real(p[0, 0])
 
-                    # get rho evals
-                    evalues_rho = np.linalg.eigvals(rho)
-                    # get N
-                    N = np.round(np.trace(rho))
-                    # store and sort N/L = rho values to determine list of uniquely reoccuring rhos
-                    rho_values = np.append(rho_values,N/L)
-                    rho_values = np.sort(np.unique(rho_values))
-                    # store s_t, condensation fraction, rho, L
-                    N,L = np.real(N), np.real(L)
-                    n_0N_frac.append([s_t[i], max(evalues_rho) / N, N/L,L])
-                    # colormap for the rhos
-                    colors = [
+                # get rho evals
+                evalues_rho = np.linalg.eigvals(rho)
+                print(np.allclose(rho, np.diag(evalues_rho)))
+                print(rho)
+                print(evalues_rho)
+                # get N
+                N = np.round(np.trace(rho))
+                # store and sort N/L = rho values to determine list of uniquely reoccuring rhos
+                rho_values = np.append(rho_values, N / L)
+                rho_values = np.sort(np.unique(rho_values))
+                # store s_t, condensation fraction, rho, L
+                N, L = np.real(N), np.real(L)
+                n_0N_frac.append([s_t[i], max(evalues_rho) / N, N / L, L])
+                # colormap for the rhos
+                colors = [
                     mcolors.TABLEAU_COLORS[str(a)] for a in mcolors.TABLEAU_COLORS
-                    ]
+                ]
         n_0N_frac = np.array(n_0N_frac)
+        # keep track of the rhos already plotted with legend
+        L_already_labeled = []
         # keep track of the rhos already plotted with legend
         rho_already_labeled = []
         # plot condensation frac against s_t and color according to rho
         for x in n_0N_frac:
-            # label with rho and L values and choose new color if rho is new
-            if x[2] not in rho_already_labeled:
-                x = np.real(x)
-                G.ax.scatter(x[0], x[1], s=3, label=r"$\rho$ = %.3f" % (x[2]) +f", L = {int(x[3])}", color = colors[np.where(rho_values == x[2])[0][0]])
-                rho_already_labeled.append(x[2])
-            # plot unlabeled if rho already appeared
+            # odd L's
+
+            if np.real(x[3]) % 2 != 0:
+                # label with rho and L values and choose new color if rho is new
+                if x[2] not in rho_already_labeled:
+                    x = np.real(x)
+                    G.ax[0].scatter(
+                        x[0],
+                        x[1],
+                        s=3,
+                        label=r"$\rho$ = %.3f" % (x[2]) + f", L = {int(x[3])}",
+                        color=colors[np.where(rho_values == x[2])[0][0]],
+                    )
+                    rho_already_labeled.append(x[2])
+                # plot unlabeled if rho already appeared
+                else:
+                    G.ax[0].scatter(
+                        x[0],
+                        x[1],
+                        s=3,
+                        color=colors[np.where(rho_values == x[2])[0][0]],
+                    )
+            # even L's
             else:
-                G.ax.scatter(x[0], x[1], s=3, color = colors[np.where(rho_values == x[2])[0][0]])
-        
+                # label with rho and L values and choose new color if rho is new
+                if x[3] not in L_already_labeled:
+                    x = np.real(x)
+                    G.ax[1].scatter(
+                        x[0],
+                        x[1],
+                        s=3,
+                        label=r"$\rho$ = %.3f" % (x[2]) + f", L = {int(x[3])}",
+                        color=colors[int(x[3])],
+                    )
+                    L_already_labeled.append(x[3])
+                # plot unlabeled if rho already appeared
+                else:
+                    G.ax[1].scatter(
+                        x[0],
+                        x[1],
+                        s=3,
+                        color=colors[int(x[3])],
+                    )
 
         # Plotting
-        G.ax.set_xscale("log")
-        G.ax.set_ylim(0, 1)
-        G.ax.set_title(
-            r"Condensate fraction $\frac{n_0}{N}$ with "
-            + str(self.matrix_type)
-            + " matrices"
-        )
-        G.ax.set_xlabel(r"$s/t$")
-        G.ax.set_ylabel(r"$\frac{n_0}{N}$")
-        G.ax.legend()
+        for i in range(2):
+            G.ax[i].set_xscale("log")
+            G.ax[i].set_ylim(0, 1)
+            G.ax[i].set_title(
+                r"Condensate fraction $\frac{n_0}{N}$ with "
+                + str(self.matrix_type)
+                + " matrices"
+            )
+            G.ax[i].set_xlabel(r"$s/t$")
+            G.ax[i].set_ylabel(r"$\frac{n_0}{N}$")
+            G.ax[i].legend()
         G.savefig(os.path.join(HOME_FOLDER, "..", "plots", "condensate_fraction.png"))
         # revert to original L just for safety
         self.__init__(L_init, self.matrix_type)
 
 
 if __name__ == "__main__":
-    L = 13
+    L = 6
     # "dense" uses ndarray, "sparse" uses scipy.sparse.coo_matrix
     test = Lattice(L, "dense")
 
     # "manual" gives the a) spectrum, anything else gives the c) spectrum
     # the integer input determines after what number of EV's the color scheme repeats, i.e. 2 means that the even and odd EV's are colored alike
-    
-    #test.spectrum("manual", 2, True)
-    #test.spectrum("exact", 2, True)
-    test.condensate_frac()
+
+    test.spectrum("manual", 2, True)
+    test.spectrum("exact", 2, True)
+    # test.condensate_frac()
+
+    def fock_to_product_state(statestring: list):
+        zero = np.array([1, 0])
+        one = np.array([0, 1])
+
+        statevectors = [zero, one]
+
+        state = statevectors[statestring[0]]
+        L = len(statestring)
+        for i in range(1, L):
+            state = np.kron(state, statevectors[statestring[i]])
+
+        return state
+
+    print(np.real(test.b_down_j(0).getH() @ fock_to_product_state([0, 0, 0])))
+    print(fock_to_product_state([1, 0, 0]))
