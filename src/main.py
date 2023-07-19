@@ -57,6 +57,7 @@ class Lattice:
         builds full Hilbert space b operator on site j. use .getH() on this b to provide b^dagger
         """
         return self.expand_operator(self.b_down_single(), j)
+        return op
 
     def correlator(self, j: int, l: int) -> np.matrix:
         """
@@ -107,7 +108,7 @@ class Lattice:
                 evals[i] = np.real(np.sort(np.linalg.eigvals(self.Hamiltonian_manual)))
 
         # exact for the c) plot
-        elif type == "exact"
+        elif type == "exact":
             # ndarray
             if self.matrix_type == "sparse":
                 evals = []
@@ -125,9 +126,9 @@ class Lattice:
                 evals = np.ndarray((len(s_t), 2**self.L))
                 for i in range(len(s_t)):
                     self.build_hamiltonian_ed(t, s=s_t[i] * t)
-                    evals[i] = np.real(np.sort(np.linalg.eigvals(self.Hamiltonian)))
+                    evals[i] = np.real(np.sort(np.linalg.eigvalsh(self.Hamiltonian)))
             else:
-            raise Exception("matrix_type can either be `dense` or `sparse`")
+                raise Exception("matrix_type can either be `dense` or `sparse`")
         else:
             raise Exception("type can either be `manual` or `exact`") 
 
@@ -235,7 +236,7 @@ class Lattice:
         #prepare plot
         G = Plotter(figsize=(6, 4), nrows=1, ncols=1)
         # Now loops over all L up to the L that the class was initiated with
-        for L in range(3, L_init + 1):
+        for L in range(1,L_init + 1):
             # adjust number of sites
             self.__init__(L, self.matrix_type)
             # storage for the cond frac of this L
@@ -262,9 +263,12 @@ class Lattice:
                 # get ground state of Hamiltonian
                 ground = evectors[:, np.where(evalues == min(evalues))][:, :, 0]
                 # fill rho matrix for this s(t)
-                for j in range(self.L + 1):
-                    for l in range(self.L + 1):
-                        p = ground.conj().T @ self.correlator(j, l) @ ground
+
+                
+                for j in range(self.L):
+                    for l in range(self.L):
+                        corr = self.correlator(j,l)
+                        p = ground.conj().T @ corr @ ground
                         rho[j][l] = np.real(p[0, 0])
 
                 evalues_rho = np.linalg.eigvals(rho)
@@ -289,10 +293,10 @@ class Lattice:
 
 
 if __name__ == "__main__":
-    L = 10
+    L = 6
     # "dense" uses ndarray, "sparse" uses scipy.sparse.coo_matrix
     test = Lattice(L, "dense")
     # "manual" gives the a) spectrum, anything else gives the c) spectrum
-    test.spectrum("manual", 2, True)
-    test.spectrum("exact", 2, True)
-    #test.condensate_frac()
+    #test.spectrum("manual", 2, True)
+    #test.spectrum("exact", 2, True)
+    test.condensate_frac()
