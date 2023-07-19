@@ -108,7 +108,7 @@ class Lattice:
                 evals[i] = np.real(np.sort(np.linalg.eigvals(self.Hamiltonian_manual)))
 
         # exact for the c) plot
-        elif type == "exact"::
+        elif type == "exact":
             # ndarray
             if self.matrix_type == "sparse":
                 evals = []
@@ -234,12 +234,15 @@ class Lattice:
         L_init = self.L
         # prepare plot
         G = Plotter(figsize=(6, 4), nrows=1, ncols=1)
+        N_L_values = []
         # Now loops over all L up to the L that the class was initiated with
         for L in range(1,L_init + 1):
+            #if L % 2 !=0:
             # adjust number of sites
             self.__init__(L, self.matrix_type)
             # storage for the cond frac of this L
             n_0N_frac = []
+            
             # values of t and s for plot
             t = 1
             s_t = np.power(10, np.linspace(start=-3, stop=1, num=200))
@@ -271,9 +274,17 @@ class Lattice:
                         rho[j][l] = np.real(p[0, 0])
 
                 evalues_rho = np.linalg.eigvals(rho)
-                n_0N_frac.append(max(evalues_rho) / np.trace(rho))
-            # add the values for this L to plot
-            G.ax.scatter(s_t, n_0N_frac, s=3, label=f"L = {L}")
+                N = np.round(np.trace(rho))
+                N_L_values.append((N,L))
+                n_0N_frac.append(max(evalues_rho) / N)
+                #n_0_N = max(evalues_rho) / N
+                # add the values for this L to plot
+                colors = [
+                mcolors.TABLEAU_COLORS[str(a)] for a in mcolors.TABLEAU_COLORS
+                ]
+            #G.ax.scatter(s_t, n_0N_frac, s=3, label=r"$\rho$ = $\frac{1}{%.3f}$" % L/N)
+            G.ax.scatter(s_t, n_0N_frac, s=3, label=r"$\rho$ = %.3f" % (N/L))
+        print(np.unique(N_L_values,axis = 0))
 
         # Plotting
         G.ax.set_xscale("log")
@@ -292,7 +303,7 @@ class Lattice:
 
 
 if __name__ == "__main__":
-    L = 6
+    L = 8
     # "dense" uses ndarray, "sparse" uses scipy.sparse.coo_matrix
     test = Lattice(L, "dense")
     # "manual" gives the a) spectrum, anything else gives the c) spectrum
