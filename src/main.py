@@ -263,32 +263,40 @@ class Lattice:
 
                     # get ground state of Hamiltonian
                     ground = evectors[:, np.where(evalues == min(evalues))][:, :, 0]
-                    # fill rho matrix for this s(t)
-
                     
+
+                    # fill rho matrix for this s(t)
                     for j in range(self.L):
                         for l in range(self.L):
                             corr = self.correlator(j,l)
                             p = ground.conj().T @ corr @ ground
                             rho[j][l] = np.real(p[0, 0])
 
+                    # get rho evals
                     evalues_rho = np.linalg.eigvals(rho)
+                    # get N
                     N = np.round(np.trace(rho))
+                    # store and sort N/L = rho values to determine list of uniquely reoccuring rhos
                     rho_values = np.append(rho_values,N/L)
                     rho_values = np.sort(np.unique(rho_values))
+                    # store s_t, condensation fraction, rho, L
                     N,L = np.real(N), np.real(L)
                     n_0N_frac.append([s_t[i], max(evalues_rho) / N, N/L,L])
-                    # add the values for this L to plot
+                    # colormap for the rhos
                     colors = [
                     mcolors.TABLEAU_COLORS[str(a)] for a in mcolors.TABLEAU_COLORS
                     ]
         n_0N_frac = np.array(n_0N_frac)
+        # keep track of the rhos already plotted with legend
         rho_already_labeled = []
+        # plot condensation frac against s_t and color according to rho
         for x in n_0N_frac:
+            # label with rho and L values and choose new color if rho is new
             if x[2] not in rho_already_labeled:
                 x = np.real(x)
                 G.ax.scatter(x[0], x[1], s=3, label=r"$\rho$ = %.3f" % (x[2]) +f", L = {int(x[3])}", color = colors[np.where(rho_values == x[2])[0][0]])
                 rho_already_labeled.append(x[2])
+            # plot unlabeled if rho already appeared
             else:
                 G.ax.scatter(x[0], x[1], s=3, color = colors[np.where(rho_values == x[2])[0][0]])
         
@@ -313,7 +321,10 @@ if __name__ == "__main__":
     L = 9
     # "dense" uses ndarray, "sparse" uses scipy.sparse.coo_matrix
     test = Lattice(L, "dense")
+
     # "manual" gives the a) spectrum, anything else gives the c) spectrum
+    # the integer input determines after what number of EV's the color scheme repeats, i.e. 2 means that the even and odd EV's are colored alike
+    
     #test.spectrum("manual", 2, True)
     #test.spectrum("exact", 2, True)
     test.condensate_frac()
