@@ -234,57 +234,62 @@ class Lattice:
         L_init = self.L
         # prepare plot
         G = Plotter(figsize=(6, 4), nrows=1, ncols=1)
-        N_L_values = []
+        rho_values = []
+        # storage for the cond frac of this L
+        n_0N_frac = []
         # Now loops over all L up to the L that the class was initiated with
         for L in range(1,L_init + 1):
-            #if L % 2 !=0:
-            # adjust number of sites
-            self.__init__(L, self.matrix_type)
-            # storage for the cond frac of this L
-            n_0N_frac = []
-            
-            # values of t and s for plot
-            t = 1
-            s_t = np.power(10, np.linspace(start=-3, stop=1, num=200))
-            # get pho for every values of s(t)
-            for i in range(len(s_t)):
-                rho = np.ndarray((self.L, self.L))
-                self.build_hamiltonian_ed(t=t, s=s_t[i] * t)
+            if L % 2 !=0:
+                # adjust number of sites
+                self.__init__(L, self.matrix_type)
+                # values of t and s for plot
+                t = 1
+                s_t = np.power(10, np.linspace(start=-3, stop=1, num=200))
+                # get pho for every values of s(t)
+                for i in range(len(s_t)):
+                    rho = np.ndarray((self.L, self.L))
+                    self.build_hamiltonian_ed(t=t, s=s_t[i] * t)
 
-                if self.matrix_type == "sparse":
-                    self.Hamiltonian = sp.coo_matrix(self.Hamiltonian)
-                    evalues, evectors = sp.linalg.eigsh(self.Hamiltonian)
-                    self.Hamiltonian = self.Hamiltonian.toarray
+                    if self.matrix_type == "sparse":
+                        self.Hamiltonian = sp.coo_matrix(self.Hamiltonian)
+                        evalues, evectors = sp.linalg.eigsh(self.Hamiltonian)
+                        self.Hamiltonian = self.Hamiltonian.toarray
 
-                elif self.matrix_type == "dense":
-                    evalues, evectors = np.linalg.eig(self.Hamiltonian)
+                    elif self.matrix_type == "dense":
+                        evalues, evectors = np.linalg.eig(self.Hamiltonian)
 
-                else:
-                    raise Exception("matrix_type can either be `dense` or `sparse`")
+                    else:
+                        raise Exception("matrix_type can either be `dense` or `sparse`")
 
-                # get ground state of Hamiltonian
-                ground = evectors[:, np.where(evalues == min(evalues))][:, :, 0]
-                # fill rho matrix for this s(t)
+                    # get ground state of Hamiltonian
+                    ground = evectors[:, np.where(evalues == min(evalues))][:, :, 0]
+                    # fill rho matrix for this s(t)
 
-                
-                for j in range(self.L):
-                    for l in range(self.L):
-                        corr = self.correlator(j,l)
-                        p = ground.conj().T @ corr @ ground
-                        rho[j][l] = np.real(p[0, 0])
+                    
+                    for j in range(self.L):
+                        for l in range(self.L):
+                            corr = self.correlator(j,l)
+                            p = ground.conj().T @ corr @ ground
+                            rho[j][l] = np.real(p[0, 0])
 
-                evalues_rho = np.linalg.eigvals(rho)
-                N = np.round(np.trace(rho))
-                N_L_values.append((N,L))
-                n_0N_frac.append(max(evalues_rho) / N)
-                #n_0_N = max(evalues_rho) / N
-                # add the values for this L to plot
-                colors = [
-                mcolors.TABLEAU_COLORS[str(a)] for a in mcolors.TABLEAU_COLORS
-                ]
-            #G.ax.scatter(s_t, n_0N_frac, s=3, label=r"$\rho$ = $\frac{1}{%.3f}$" % L/N)
-            G.ax.scatter(s_t, n_0N_frac, s=3, label=r"$\rho$ = %.3f" % (N/L))
-        print(np.unique(N_L_values,axis = 0))
+                    evalues_rho = np.linalg.eigvals(rho)
+                    N = np.round(np.trace(rho))
+                    rho_values = np.append(rho_values,N/L)
+                    rho_values = np.sort(np.unique(rho_values))
+                    n_0N_frac.append([s_t[i], max(evalues_rho) / N, N/L])
+                    # add the values for this L to plot
+                    colors = [
+                    mcolors.TABLEAU_COLORS[str(a)] for a in mcolors.TABLEAU_COLORS
+                    ]
+        n_0N_frac = np.array(n_0N_frac)
+        rho_already_labeled = []
+        for x in n_0N_frac:
+            if x[2] not in rho_already_labeled:
+                G.ax.scatter(x[0], x[1], s=3, label=r"$\rho$ = %.3f" % (x[2]), color = colors[np.where(rho_values == x[2])[0][0]])
+                rho_already_labeled.append(x[2])
+            else:
+                G.ax.scatter(x[0], x[1], s=3, color = colors[np.where(rho_values == x[2])[0][0]])
+        
 
         # Plotting
         G.ax.set_xscale("log")
@@ -303,7 +308,7 @@ class Lattice:
 
 
 if __name__ == "__main__":
-    L = 8
+    L = 9
     # "dense" uses ndarray, "sparse" uses scipy.sparse.coo_matrix
     test = Lattice(L, "dense")
     # "manual" gives the a) spectrum, anything else gives the c) spectrum
