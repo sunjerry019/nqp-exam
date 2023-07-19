@@ -276,7 +276,8 @@ class Lattice:
                     N = np.round(np.trace(rho))
                     rho_values = np.append(rho_values,N/L)
                     rho_values = np.sort(np.unique(rho_values))
-                    n_0N_frac.append([s_t[i], max(evalues_rho) / N, N/L])
+                    N,L = np.real(N), np.real(L)
+                    n_0N_frac.append([s_t[i], max(evalues_rho) / N, N/L,L])
                     # add the values for this L to plot
                     colors = [
                     mcolors.TABLEAU_COLORS[str(a)] for a in mcolors.TABLEAU_COLORS
@@ -285,7 +286,8 @@ class Lattice:
         rho_already_labeled = []
         for x in n_0N_frac:
             if x[2] not in rho_already_labeled:
-                G.ax.scatter(x[0], x[1], s=3, label=r"$\rho$ = %.3f" % (x[2]), color = colors[np.where(rho_values == x[2])[0][0]])
+                x = np.real(x)
+                G.ax.scatter(x[0], x[1], s=3, label=r"$\rho$ = %.3f" % (x[2]) +f", L = {int(x[3])}", color = colors[np.where(rho_values == x[2])[0][0]])
                 rho_already_labeled.append(x[2])
             else:
                 G.ax.scatter(x[0], x[1], s=3, color = colors[np.where(rho_values == x[2])[0][0]])

@@ -1,0 +1,4 @@
+/home/s/Simon.Krumm/Documents/nqp/nqp-exam/src/main.py:280: RuntimeWarning: invalid value encountered in double_scalars
+  n_0N_frac.append([s_t[i], max(evalues_rho) / N, N/L,L])
+/software/opt/focal/x86_64/python/3.10-2022.08/lib/python3.10/site-packages/matplotlib/collections.py:206: ComplexWarning: Casting complex values to real discards the imaginary part
+  offsets = np.asanyarray(offsets, float)
