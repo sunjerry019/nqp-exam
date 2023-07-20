@@ -104,7 +104,7 @@ class Lattice:
                 + self.b_down_j(j) @ self.b_down_j(self.L).dagger()
             ) * -s
 
-    def spectrum(self, type_: str, rep: int, shareplot: bool = True) -> None:
+    def spectrum(self, type_: str) -> None:
         """
         provides plots for a) and c) depending on the "type" argument
 
@@ -439,6 +439,6 @@ if __name__ == "__main__":
     # test.spectrum_manual()
     # test.spectrum_exact()
 
-    test.spectrum("manual", 2, True)
-    test.spectrum("exact", 2, True)
+    test.spectrum("manual")
+    test.spectrum("exact")
     condensate_frac(init_L=L, matrix_type="dense")
