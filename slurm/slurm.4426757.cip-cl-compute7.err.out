@@ -1,0 +1,14 @@
+Unable to init server: Could not connect: Connection refused
+Gtk-Message: 11:26:47.108: Failed to load module "appmenu-gtk-module"
+Gtk-Message: 11:26:47.109: Failed to load module "appmenu-gtk-module"
+Unable to init server: Could not connect: Connection refused
+
+(main.py:1075190): Gdk-CRITICAL **: 11:26:47.109: gdk_cursor_new_for_display: assertion 'GDK_IS_DISPLAY (display)' failed
+Traceback (most recent call last):
+  File "main.py", line 353, in <module>
+    test.spectrum("manual", 2, True)
+  File "main.py", line 111, in spectrum
+    evals[i]= self.Hamiltonian_manual.get_eigvals()
+  File "/home/y/Yudong.Sun/0_modules/NQP/nqp-exam/src/QM.py", line 251, in get_eigvals
+    hermitian = scipy.linalg.ishermitian(self.matrix)
+AttributeError: module 'scipy.linalg' has no attribute 'ishermitian'

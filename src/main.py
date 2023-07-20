@@ -1,4 +1,7 @@
+#!/usr/bin/env python3
+
 import numpy as np
+
 import matplotlib.pyplot as plt
 import scipy.sparse as sp
 import scipy.linalg as linalg
@@ -11,86 +14,84 @@ import sys, os
 
 HOME_FOLDER = os.path.abspath(os.path.dirname(__file__))
 
+from QM import *
 
 class Lattice:
     def __init__(self, L: int, type: str) -> None:
         # str that store whether to use dense or spars matrices
         self.matrix_type = type
+        self.sparse = (self.matrix_type == "sparse")
+
         self.L = L
-        self.Hamiltonian_manual = np.zeros((L + 1, L + 1))
-        self.Hamiltonian = np.zeros((2 ** (L + 1), 2 ** (L + 1)), dtype=np.complex128)
+        self.Hamiltonian_manual = Operator(L = L+1, matrix = np.zeros((L + 1, L + 1)), sparse = self.sparse)
+        self.Hamiltonian = HBFockOperator(L, sparse = self.sparse) # Size 2**(L+1) x 2**(L+1)
 
     def build_hamiltonian_manual(self, t: float, s: float) -> None:
         """
         builds the "handmade" Hamiltonian for a) in the h operator basis
         """
         # clear Hamiltonian
-        self.Hamiltonian_manual = np.zeros((self.L + 1, self.L + 1))
+        H = np.zeros((self.L + 1, self.L + 1))
 
         for i in range(self.L + 1):
             for j in range(self.L + 1):
                 if i != j:
                     if i <= self.L - 1 and j <= self.L - 1:
-                        self.Hamiltonian_manual[i][j] = -t
+                        H[i][j] = -t
                     else:
-                        self.Hamiltonian_manual[i][j] = -s
+                        H[i][j] = -s
 
-    def b_down_single(self) -> np.matrix:
+        self.Hamiltonian_manual = Operator(L = self.L + 1, matrix = H, sparse = self.sparse)
+
+    def b_down_single(self) -> HBFockOperator:
         """
         single site b operator
         """
-        s1 = 0.5 * np.matrix([[0, 1], [1, 0]])
-        s2 = 0.5 * np.matrix([[0, -1j], [1j, 0]])
-        op = s1 + 1j * s2
-        return op
+        mat = np.array([
+            [0, 1],
+            [0, 0]
+        ])
+        return HBFockOperator(0, mat, sparse = self.sparse)
 
-    def expand_operator(self, op: np.matrix, j: int) -> np.matrix:
+    def b_down_j(self, j: int) -> HBFockOperator:
         """
-        expansion func that kroneckers an operator at site j up to the full space
+        builds full Hilbert space b operator on site j. use .dagger() on this b to provide b^dagger
         """
-        op = np.kron(np.eye(2**j, 2**j), op)
-        op = np.kron(op, np.eye(2 ** (self.L - j), 2 ** (self.L - j)))
+        return self.b_down_single().expand_to(self.L, site = j)
 
-        return op
-
-    def b_down_j(self, j: int) -> np.matrix:
-        """
-        builds full Hilbert space b operator on site j. use .getH() on this b to provide b^dagger
-        """
-        return self.expand_operator(self.b_down_single(), j)
-
-    def correlator(self, j: int, l: int) -> np.matrix:
+    def correlator(self, j: int, l: int) -> HBFockOperator:
         """
         correlator for d)
         """
-        return self.b_down_j(j).getH() @ self.b_down_j(l)
+        corr = self.b_down_j(j).dagger() @ self.b_down_j(l)
+        assert isinstance(corr, HBFockOperator)
+
+        return corr
 
     def build_hamiltonian_ed(self, t: float, s: float) -> None:
         """
         buils Hamiltonian from b operators (which corresponds to S+ S- basis)
         """
         # clear Hamiltonian
-        self.Hamiltonian = np.zeros(
-            (2 ** (self.L + 1), 2 ** (self.L + 1)), dtype=np.complex128
-        )
+        self.Hamiltonian = HBFockOperator(self.L, sparse = self.sparse)
 
         for j in range(self.L - 1):
             # PBC
             if j == self.L - 2:
-                self.Hamiltonian += -t * (
-                    self.b_down_j(j).getH() @ self.b_down_j(0)
-                    + self.b_down_j(j) @ self.b_down_j(0).getH()
-                )
+                self.Hamiltonian += (
+                    self.b_down_j(j).dagger() @ self.b_down_j(0)
+                    + self.b_down_j(j) @ self.b_down_j(0).dagger()
+                ) * -t
             else:
-                self.Hamiltonian += -t * (
-                    self.b_down_j(j).getH() @ self.b_down_j(j + 1)
-                    + self.b_down_j(j) @ self.b_down_j(j + 1).getH()
-                )
+                self.Hamiltonian += (
+                    self.b_down_j(j).dagger() @ self.b_down_j(j + 1)
+                    + self.b_down_j(j) @ self.b_down_j(j + 1).dagger()
+                ) * -t
             # center hop part doesnt need any PBC separation
-            self.Hamiltonian += -s * (
-                self.b_down_j(j).getH() @ self.b_down_j(self.L)
-                + self.b_down_j(j) @ self.b_down_j(self.L).getH()
-            )
+            self.Hamiltonian +=  (
+                self.b_down_j(j).dagger() @ self.b_down_j(self.L)
+                + self.b_down_j(j) @ self.b_down_j(self.L).dagger()
+            ) * -s
 
     def spectrum(self, type: str, rep: int, shareplot: bool = True) -> None:
         """
@@ -107,37 +108,20 @@ class Lattice:
 
             for i in range(len(s_t)):
                 self.build_hamiltonian_manual(t, s=s_t[i] * t)
-                evals[i] = np.real(np.sort(np.linalg.eigvals(self.Hamiltonian_manual)))
+                evals[i]= self.Hamiltonian_manual.get_eigvals()
 
         # exact for the c) plot
         elif type == "exact":
-            # ndarray
-            if self.matrix_type == "sparse":
-                evals = []
-                for i in range(len(s_t)):
-                    self.build_hamiltonian_ed(t, s=s_t[i] * t)
-                    self.Hamiltonian = sp.coo_matrix(self.Hamiltonian)
+            evals = []
+            for i in range(len(s_t)):
+                self.build_hamiltonian_ed(t, s=s_t[i] * t) 
+                evals.append(self.Hamiltonian.get_eigvals())
 
-                    eigs, evectors = sp.linalg.eigsh(
-                        self.Hamiltonian, which="SM", k=self.Hamiltonian.shape[0] - 2
-                    )
-                    evals.append(eigs)
-
-                    self.Hamiltonian = self.Hamiltonian.toarray()
-                evals = np.array(evals)
-            # scipy.sparse
-            elif self.matrix_type == "dense":
-                evals = np.ndarray((len(s_t), 2 ** (self.L + 1)))
-                for i in range(len(s_t)):
-                    self.build_hamiltonian_ed(t, s=s_t[i] * t)
-                    evals[i] = np.real(np.sort(np.linalg.eigvalsh(self.Hamiltonian)))
-            else:
-                raise Exception("matrix_type can either be `dense` or `sparse`")
         else:
             raise Exception("type can either be `manual` or `exact`")
 
         # reshape evals list according to the evolution of each eval under t_s
-        evals_new = evals.T
+        evals_new = np.array(evals).T
 
         num_eigv = len(evals_new)
         # put all EV's on the same plot
@@ -359,7 +343,7 @@ class Lattice:
 
 
 if __name__ == "__main__":
-    L = 6
+    L = 11
     # "dense" uses ndarray, "sparse" uses scipy.sparse.coo_matrix
     test = Lattice(L, "dense")
 
@@ -368,20 +352,3 @@ if __name__ == "__main__":
 
     test.spectrum("manual", 2, True)
     test.spectrum("exact", 2, True)
-    # test.condensate_frac()
-
-    def fock_to_product_state(statestring: list):
-        zero = np.array([1, 0])
-        one = np.array([0, 1])
-
-        statevectors = [zero, one]
-
-        state = statevectors[statestring[0]]
-        L = len(statestring)
-        for i in range(1, L):
-            state = np.kron(state, statevectors[statestring[i]])
-
-        return state
-
-    print(np.real(test.b_down_j(0).getH() @ fock_to_product_state([0, 0, 0])))
-    print(fock_to_product_state([1, 0, 0]))
