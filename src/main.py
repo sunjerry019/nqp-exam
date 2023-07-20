@@ -352,9 +352,6 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
             evalues_rho = np.linalg.eigvals(rho)
             # get N
             N = np.round(np.trace(rho))
-            # store and sort N/L = rho values to determine list of uniquely reoccuring rhos
-            rho_values = np.append(rho_values, N / L)
-            rho_values = np.sort(np.unique(rho_values))
             # store s_t, condensation fraction, rho, L
             N, L = np.real(N), np.real(L)
             # n_0N_frac.append([s_t[i], max(evalues_rho) / N, N / L, L])
@@ -369,7 +366,7 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
 
         # Parameters
         t = 1
-        num = 112  # num must be a multiple of MPI_SIZE
+        num = 256  # num must be a multiple of MPI_SIZE
         chunk_size = num // SIZE
         assert (
             num % SIZE == 0
@@ -380,20 +377,20 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
 
         # Generate the list of s/ts and scatter it
         if RANK == 0:
-            s_t = np.power(10, np.linspace(start=-3, stop=3, num=256))
+            s_t = np.power(10, np.linspace(start=-3, stop=3, num=num))
             sendbuf = np.array(np.split(s_t, SIZE))
         recvbuf = np.empty(chunk_size)
         COMM.Scatter(sendbuf, recvbuf, root=0)
 
         # Do the calculations
         _my_s_t = recvbuf
-        s_t_value = np.empty(shape = (len(_my_s_t),))
-        cond_frac = np.empty(shape = (len(_my_s_t),))
-        density   = np.empty(shape = (len(_my_s_t),))
+        s_t_value = np.zeros(shape = (len(_my_s_t),))
+        cond_frac = np.zeros(shape = (len(_my_s_t),))
+        density   = np.zeros(shape = (len(_my_s_t),))
 
         for i in range(len(_my_s_t)):
             rho = np.ndarray((L + 1, L + 1))
-            lattice.build_hamiltonian_ed(t=t, s=s_t[i] * t)
+            lattice.build_hamiltonian_ed(t=t, s=_my_s_t[i] * t)
 
             evalues, evectors = lattice.hamiltonian["exact"].get_eigsys()
 
@@ -417,7 +414,7 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
             # store s_t, condensation fraction, rho, L
             N, L = np.real(N), np.real(L)
 
-            s_t_value[i] = s_t[i]
+            s_t_value[i] = _my_s_t[i]
             cond_frac[i] = max(evalues_rho) / N
             density[i] = N/L
         COMM.Barrier()
@@ -437,7 +434,8 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
 
         if RANK != 0:
             return
-    
+        
+        assert RANK == 0
         # Here Rank == 0
         assert isinstance(recvbuf_s_t_value, np.ndarray)
         assert isinstance(recvbuf_cond_frac, np.ndarray)
@@ -452,7 +450,7 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
 
         with open(datafile, 'a') as df:
             for k in range(len(s_t_value)):
-                df.write(f"{s_t_value[k]},{cond_frac[k]}, {density[k]}\n")
+                df.write(f"{s_t_value[k]},{cond_frac[k]},{density[k]}\n")
         
 
 if __name__ == "__main__":
