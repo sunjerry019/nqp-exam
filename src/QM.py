@@ -10,14 +10,16 @@ import scipy.linalg
 
 from typing import Union, Literal, overload
 
+
 class ST(enum.Enum):
     BRA = 0
     KET = 1
 
-class State():
+
+class State:
     def __init__(self, L: int, vector: np.ndarray, typ: ST) -> None:
         self.L = L
-        self.vector = vector 
+        self.vector = vector
 
         assert typ in ST
         self.type = typ
@@ -27,10 +29,14 @@ class State():
         elif typ == ST.KET:
             self.vector = self.vector.reshape((-1, 1))
 
+        self.operator = Operator
+
     def dagger(self) -> State:
         newtype = ST.BRA if self.type == ST.KET else ST.KET
-        return type(self)(self.L, self.vector.conj(), newtype) # constructor handles the transposing
-    
+        return type(self)(
+            self.L, self.vector.conj(), newtype
+        )  # constructor handles the transposing
+
     # definitions
     def __add__(self, o: Union[Literal, int, float, complex, State]) -> State:
         assert isinstance(o, (int, float, complex, State))
@@ -39,33 +45,33 @@ class State():
             assert self.L == o.L, "Number of lattices sites do not match"
             newvec = self.vector + o.vector
         else:
-            newvec = self.vector + o # type: ignore
+            newvec = self.vector + o  # type: ignore
 
         return type(self)(self.L, newvec, self.type)
-    
+
     def __sub__(self, o: Union[Literal, int, float, complex, State]) -> State:
-        return self.__add__(o * -1) # type: ignore
-    
+        return self.__add__(o * -1)  # type: ignore
+
     def __mul__(self, o: Union[Literal, int, float, complex]) -> State:
         assert isinstance(o, (int, float, complex))
         newvec = o * self.vector
         return type(self)(self.L, newvec, self.type)
-    
+
     def __truediv__(self, o: Union[Literal, int, float, complex]) -> State:
         assert isinstance(o, (int, float, complex))
-        newvec = 1/o * self.vector
+        newvec = 1 / o * self.vector
         return type(self)(self.L, newvec, self.type)
-    
+
     def __floordiv__(self, o: Union[Literal, int, float, complex]) -> State:
         assert isinstance(o, (int, float, complex))
-        newvec = self.vector // o # type: ignore
+        newvec = self.vector // o  # type: ignore
         return type(self)(self.L, newvec, self.type)
-    
+
     def __mod__(self, o: Union[Literal, int, float, complex]) -> State:
         assert isinstance(o, (int, float, complex))
-        newvec = self.vector % o # type: ignore
+        newvec = self.vector % o  # type: ignore
         return type(self)(self.L, newvec, self.type)
-    
+
     # in place definitions
     def __iadd__(self, o: Union[Literal, int, float, complex, State]) -> State:
         assert isinstance(o, (int, float, complex, State))
@@ -74,31 +80,31 @@ class State():
             assert self.L == o.L, "Number of lattices sites do not match"
             self.vector += o.vector
         else:
-            self.vector += o # type: ignore
+            self.vector += o  # type: ignore
 
         return self
-    
+
     def __isub__(self, o: Union[Literal, int, float, complex, State]) -> State:
-        return self.__iadd__(o * -1) # type: ignore
-    
+        return self.__iadd__(o * -1)  # type: ignore
+
     def __imul__(self, o: Union[Literal, int, float, complex]) -> State:
         assert isinstance(o, (int, float, complex))
         self.vector = o * self.vector
         return self
-    
+
     def __itruediv__(self, o: Union[Literal, int, float, complex]) -> State:
         assert isinstance(o, (int, float, complex))
-        self.vector = 1/o * self.vector
+        self.vector = 1 / o * self.vector
         return self
-    
+
     def __ifloordiv__(self, o: Union[Literal, int, float, complex]) -> State:
         assert isinstance(o, (int, float, complex))
-        self.vector = self.vector // o # type: ignore
+        self.vector = self.vector // o  # type: ignore
         return self
-    
+
     def __imod__(self, o: Union[Literal, int, float, complex]) -> State:
         assert isinstance(o, (int, float, complex))
-        self.vector = self.vector % o # type: ignore
+        self.vector = self.vector % o  # type: ignore
         return self
 
     # matmuls
@@ -108,31 +114,43 @@ class State():
 
         if self.type == ST.KET:
             raise TypeError("Unable to multiply ket with operator")
-        
+
         self.vector @= o.matrix
 
         return self
     
+    @overload
+    def __matmul__(self, o: State) -> Union[float, complex]:
+        pass
+    @overload
+    def __matmul__(self, o: State) -> Operator:
+        pass
+
+    @overload
     def __matmul__(self, o: Operator) -> State:
-        assert isinstance(o, Operator)
+        pass
 
-        if self.type == ST.KET:
-            raise TypeError("Unable to multiply ket with operator")
+    def __matmul__(self, o: Union[Operator, State]) -> Union[Operator, State, Union[float, complex]]:
+        if self.type == ST.BRA and isinstance(o, Operator):
+            return type(self)(self.L, self.vector @ o.matrix, self.type)
+        elif self.type == ST.KET and o.type == ST.BRA:
+            return self.operator(self.L, self.vector @ o.vector)
+        elif self.type == ST.BRA and o.type == ST.KET:
+            return (self.vector @ o.vector).flatten()[0]
         
-        newvec = self.vector @ o.matrix
+        raise TypeError(f"MatMul not defined for {self.type} and {o}")
 
-        return type(self)(self.L, newvec, self.type)
-    
-    # Comparisons    
+    # Comparisons
     def __eq__(self, o: State) -> Union[bool, np.bool_]:
         assert isinstance(o, State)
         return (self.L == o.L) and np.all(self.vector == o.vector)
-    
+
     def expand_to(self, newL: int, before: list[State], after: list[State]) -> State:
         raise NotImplementedError("Not implemented")
-    
-class Operator():
-    def __init__(self, L: int, matrix: Union[np.ndarray, scipy.sparse], sparse = True) -> None:
+
+
+class Operator:
+    def __init__(self, L: int, matrix: np.ndarray, sparse=True) -> None:
         self.L = L
         if sparse and not scipy.sparse.issparse(matrix):
             matrix = scipy.sparse.coo_matrix(matrix).tocsr()
@@ -150,33 +168,33 @@ class Operator():
             assert self.L == o.L, "Number of lattices sites do not match"
             newvec = self.matrix + o.matrix
         else:
-            newvec = self.matrix + o # type: ignore
+            newvec = self.matrix + o  # type: ignore
 
         return type(self)(self.L, newvec)
-    
+
     def __sub__(self, o: Union[Literal, int, float, complex, Operator]) -> Operator:
-        return self.__add__(o * -1) # type: ignore
-    
+        return self.__add__(o * -1)  # type: ignore
+
     def __mul__(self, o: Union[Literal, int, float, complex]) -> Operator:
         assert isinstance(o, (int, float, complex))
         newvec = o * self.matrix
         return type(self)(self.L, newvec)
-    
+
     def __truediv__(self, o: Union[Literal, int, float, complex]) -> Operator:
         assert isinstance(o, (int, float, complex))
-        newvec = 1/o * self.matrix
+        newvec = 1 / o * self.matrix
         return type(self)(self.L, newvec)
-    
+
     def __floordiv__(self, o: Union[Literal, int, float, complex]) -> Operator:
         assert isinstance(o, (int, float, complex))
-        newvec = self.matrix // o # type: ignore
+        newvec = self.matrix // o  # type: ignore
         return type(self)(self.L, newvec)
-    
+
     def __mod__(self, o: Union[Literal, int, float, complex]) -> Operator:
         assert isinstance(o, (int, float, complex))
-        newvec = self.matrix % o # type: ignore
+        newvec = self.matrix % o  # type: ignore
         return type(self)(self.L, newvec)
-    
+
     # in place definitions
     def __iadd__(self, o: Union[Literal, int, float, complex, Operator]) -> Operator:
         assert isinstance(o, (int, float, complex, Operator))
@@ -185,42 +203,42 @@ class Operator():
             assert self.L == o.L, "Number of lattices sites do not match"
             self.matrix += o.matrix
         else:
-            self.matrix += o # type: ignore
+            self.matrix += o  # type: ignore
 
         return self
-    
+
     def __isub__(self, o: Union[Literal, int, float, complex, Operator]) -> Operator:
-        return self.__iadd__(o * -1) # type: ignore
-    
+        return self.__iadd__(o * -1)  # type: ignore
+
     def __imul__(self, o: Union[Literal, int, float, complex]) -> Operator:
         assert isinstance(o, (int, float, complex))
         self.matrix = o * self.matrix
         return self
-    
+
     def __itruediv__(self, o: Union[Literal, int, float, complex]) -> Operator:
         assert isinstance(o, (int, float, complex))
-        self.matrix = 1/o * self.matrix
+        self.matrix = 1 / o * self.matrix
         return self
-    
+
     def __ifloordiv__(self, o: Union[Literal, int, float, complex]) -> Operator:
         assert isinstance(o, (int, float, complex))
-        self.matrix = self.matrix // o # type: ignore
+        self.matrix = self.matrix // o  # type: ignore
         return self
-    
+
     def __imod__(self, o: Union[Literal, int, float, complex]) -> Operator:
         assert isinstance(o, (int, float, complex))
-        self.matrix = self.matrix % o # type: ignore
+        self.matrix = self.matrix % o  # type: ignore
         return self
 
     # matmuls
     # https://stackoverflow.com/a/55990630/3211506
     def __imatmul__(self, o: Operator) -> Operator:
         assert isinstance(o, Operator)
-        
+
         self.matrix @= o.matrix
 
         return self
-    
+
     # https://stackoverflow.com/a/52449229/3211506
     @overload
     def __matmul__(self, o: State) -> State:
@@ -240,31 +258,59 @@ class Operator():
         # Its a state
         if o.type == ST.BRA:
             raise TypeError("Unable to multiply operator with bra")
-        
+
         newvec = self.matrix @ o.vector
         return type(o)(o.L, newvec, o.type)
-    
+
     def expand_to(self, newL: int, site: int) -> Operator:
         raise NotImplementedError("Not implemented")
-    
+
     def get_eigvals(self):
-        hermitian = scipy.linalg.ishermitian(self.matrix)
+        if self.sparse:
+            hermitian = scipy.linalg.ishermitian(self.matrix.todense())
+        else:
+            hermitian = scipy.linalg.ishermitian(self.matrix)
+
         if not self.sparse:
             if hermitian:
                 return np.real(np.sort(np.linalg.eigvalsh(self.matrix)))
             else:
-                return np.sort(np.sort(np.linalg.eigvals(self.matrix)))
+                return np.sort(np.linalg.eigvals(self.matrix))
         else:
             if hermitian:
-                eigval, eigvec = scipy.linalg.eigsh(
+                eigval, eigvec = scipy.sparse.linalg.eigsh(
                     self.matrix, which="SM", k=self.matrix.shape[0] - 2
                 )
             else:
-                eigval, eigvec =  scipy.linalg.eigs(
+                eigval, eigvec = scipy.sparse.linalg.eigs(
                     self.matrix, which="SM", k=self.matrix.shape[0] - 2
                 )
 
             return eigval
+
+    def get_eigsys(self):
+        if self.sparse:
+            hermitian = scipy.linalg.ishermitian(self.matrix.todense())
+        else:
+            hermitian = scipy.linalg.ishermitian(self.matrix)
+
+        if not self.sparse:
+            if hermitian:
+                return np.linalg.eigh(self.matrix)
+            else:
+                return np.linalg.eig(self.matrix)
+        else:
+            if hermitian:
+                eigval, eigvec = scipy.sparse.linalg.eigsh(
+                    self.matrix, which="SM", k=self.matrix.shape[0] - 2
+                )
+            else:
+                eigval, eigvec = scipy.sparse.linalg.eigs(
+                    self.matrix, which="SM", k=self.matrix.shape[0] - 2
+                )
+
+            return eigval, eigvec
+
 
 class HBFockState(State):
     def __init__(self, L: int, vector: np.ndarray, typ: ST) -> None:
@@ -275,9 +321,22 @@ class HBFockState(State):
             vector (np.ndarray): Vector repr
             typ (ST): ST.KET or ST.BRA
         """
-        assert len(vector) == 2**(L + 1), "Fock State vector must be 2**(L+1)"
+
+        # https://stackoverflow.com/a/70717629
+        if vector.any():
+            vector = np.hstack(vector)
+        else:
+            vector = vector.flatten()
+
+        # https://stackoverflow.com/a/3338368
+        if isinstance(vector, np.matrix):
+            vector = np.squeeze(np.asarray(vector))
+
+        print(vector.shape, len(vector))
+        assert len(vector) == 2 ** (L + 1), "Fock State vector must be 2**(L+1)"
         super().__init__(L, vector, typ)
-    
+        self.operator = HBFockOperator
+
     @staticmethod
     def from_fock_repr(vector: np.ndarray, typ: ST) -> HBFockState:
         zero = np.array([1, 0])
@@ -291,8 +350,10 @@ class HBFockState(State):
             state = np.kron(state, statevectors[vector[i]])
 
         return HBFockState(L - 1, state, typ)
-    
-    def expand_to(self, newL: int, before: list[HBFockState], after: list[HBFockState]) -> HBFockState:
+
+    def expand_to(
+        self, newL: int, before: list[HBFockState], after: list[HBFockState]
+    ) -> HBFockState:
         vector = None
         for i, state in enumerate(before):
             if state.type != self.type:
@@ -301,29 +362,38 @@ class HBFockState(State):
             if i == 0:
                 vector = before[0].vector
             else:
-                vector = np.kron(vector, state.vector) # type: ignore
+                vector = np.kron(vector, state.vector)  # type: ignore
 
-        vector = np.kron(vector, self.vector) # type: ignore
+        vector = np.kron(vector, self.vector)  # type: ignore
 
         for state in enumerate(after):
-            vector = np.kron(vector, state.vector) # type: ignore
+            vector = np.kron(vector, state.vector)  # type: ignore
 
         return HBFockState(newL, vector, self.type)
 
+
 class HBFockOperator(Operator):
-    def __init__(self, L: int, matrix: Union[np.ndarray, None] = None, *args, **kwargs) -> None:
+    def __init__(
+        self, L: int, matrix: Union[np.ndarray, None] = None, *args, **kwargs
+    ) -> None:
         if matrix is None:
-            matrix = np.zeros((2**(L+1), 2**(L+1)))
+            matrix = np.zeros((2 ** (L + 1), 2 ** (L + 1)))
 
         shape = matrix.shape
-        assert shape == (2**(L+1), 2**(L+1)), "Fock Operator must be 2**(L+1) x 2**(L+1)"
+        assert shape == (
+            2 ** (L + 1),
+            2 ** (L + 1),
+        ), "Fock Operator must be 2**(L+1) x 2**(L+1)"
         super().__init__(L, matrix, *args, **kwargs)
 
     def expand_to(self, newL: int, site: int) -> HBFockOperator:
-        op = np.kron(np.eye(2**site, 2**site), self.matrix)
-        op = np.kron(op, np.eye(2 ** (newL - site), 2 ** (newL - site)))
+        if not self.sparse:
+            op = np.kron(np.eye(2**site, 2**site), self.matrix)
+            op = np.kron(op, np.eye(2 ** (newL - site), 2 ** (newL - site)))
+        else:
+            op = scipy.sparse.kron(scipy.sparse.eye(2**site, 2**site), self.matrix)
+            op = scipy.sparse.kron(
+                op, scipy.sparse.eye(2 ** (newL - site), 2 ** (newL - site))
+            )
 
         return HBFockOperator(newL, op)
-
-
-
