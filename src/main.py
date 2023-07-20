@@ -96,7 +96,7 @@ class Lattice:
                 + self.b_down_j(j) @ self.b_down_j(self.L).dagger()
             ) * -s
 
-    def spectrum(self, type: str, rep: int, shareplot: bool = True) -> None:
+    def spectrum(self, type_: str, rep: int, shareplot: bool = True) -> None:
         """
         provides plots for a) and c) depending on the "type" argument
 
@@ -105,22 +105,19 @@ class Lattice:
         t = 1
         s_t = np.power(10, np.linspace(start=-2, stop=1, num=100))
 
-        # manual for the a) plot
-        if type == "manual":
-            evals = []
-            for i in range(len(s_t)):
-                self.build_hamiltonian_manual(t, s=s_t[i] * t)
-                evals.append(self.hamiltonian["manual"].get_eigvals())
+        build_hamiltonian_func = {
+            "manual": self.build_hamiltonian_manual, # manual for the a) plot
+            "exact" : self.build_hamiltonian_ed      # exact for the c) plot
+        }
 
-        # exact for the c) plot
-        elif type == "exact":
-            evals = []
-            for i in range(len(s_t)):
-                self.build_hamiltonian_ed(t, s=s_t[i] * t)
-                evals.append(self.hamiltonian["exact"].get_eigvals())
+        if type_ not in build_hamiltonian_func:
+            raise ValueError("type can either be `manual` or `exact`")
 
-        else:
-            raise Exception("type can either be `manual` or `exact`")
+        # We calculate the evals here
+        evals = []
+        for i in range(len(s_t)):
+            build_hamiltonian_func[type_](t, s=s_t[i] * t)
+            evals.append(self.hamiltonian[type_].get_eigvals())
 
         # reshape evals list according to the evolution of each eval under t_s
         evals_new = np.array(evals).T
