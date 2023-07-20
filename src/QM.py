@@ -29,7 +29,7 @@ class State():
 
     def dagger(self) -> State:
         newtype = ST.BRA if self.type == ST.KET else ST.KET
-        return type(self)(self.L, self.vector, newtype)
+        return type(self)(self.L, self.vector.conj(), newtype) # constructor handles the transposing
     
     # definitions
     def __add__(self, o: Union[Literal, int, float, complex, State]) -> State:
@@ -135,6 +135,9 @@ class Operator():
     def __init__(self, L: int, matrix: np.ndarray) -> None:
         self.L = L
         self.matrix = matrix
+
+    def dagger(self) -> Operator:
+        return type(self)(self.L, self.matrix.conj().T)
 
     def __add__(self, o: Union[Literal, int, float, complex, Operator]) -> Operator:
         assert isinstance(o, (Literal, int, float, complex, Operator))
@@ -285,6 +288,5 @@ class HBFockOperator(Operator):
         op = np.kron(np.eye(2**site, 2**site), self.matrix)
         op = np.kron(op, np.eye(2 ** (newL - site), 2 ** (newL - site)))
 
-        return HBFockOperator(newL, op)
-        
+        return HBFockOperator(newL, op)        
 
