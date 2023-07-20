@@ -123,8 +123,8 @@ class Lattice:
         if not self.mpi:
             t = 1
             s_t = np.power(10, np.linspace(start=-2, stop=1, num=100))
-
-           evals = []
+            
+            evals = []
             for i in range(len(s_t)):
                 build_hamiltonian_func[type_](t, s=s_t[i] * t)
                 evals.append(self.hamiltonian[type_].get_eigvals())
