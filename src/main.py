@@ -26,6 +26,11 @@ class Lattice:
 
         self.mpi = mpi if MPI is not None else False
 
+        if self.mpi:
+            self.MPI_COMM = MPI.COMM_WORLD
+            self.MPI_SIZE = self.MPI_COMM.Get_size()
+            self.MPI_RANK = self.MPI_COMM.Get_rank()
+
         self.L = L
         self.hamiltonian = {
             "manual" : Operator(L=L + 1, matrix=np.zeros((L + 1, L + 1)), sparse=self.sparse),
@@ -102,8 +107,7 @@ class Lattice:
 
         """
         # values of t and s for plot
-        t = 1
-        s_t = np.power(10, np.linspace(start=-2, stop=1, num=100))
+        
 
         build_hamiltonian_func = {
             "manual": self.build_hamiltonian_manual, # manual for the a) plot
@@ -114,13 +118,63 @@ class Lattice:
             raise ValueError("type can either be `manual` or `exact`")
 
         # We calculate the evals here
-        evals = []
-        for i in range(len(s_t)):
-            build_hamiltonian_func[type_](t, s=s_t[i] * t)
-            evals.append(self.hamiltonian[type_].get_eigvals())
+        if not self.mpi:
+            t = 1
+            s_t = np.power(10, np.linspace(start=-2, stop=1, num=100))
+
+            evals = []
+            for i in range(len(s_t)):
+                build_hamiltonian_func[type_](t, s=s_t[i] * t)
+                evals.append(self.hamiltonian[type_].get_eigvals())
+            evals = np.array(evals)
+        else:
+            # Buffers
+            evals = []
+            sendbuf = None
+            recvbuf = None
+
+            # Parameters
+            t = 1
+            num = 100 # num must be a multiple of MPI_SIZE
+            chunk_size = num // self.MPI_SIZE
+            assert num % self.MPI_SIZE == 0, "number of samples not divisible by number of nodes"
+
+            # Just in case we have some other function running
+            self.MPI_COMM.Barrier() 
+
+            # Generate the list of s/ts and scatter it
+            if self.MPI_RANK == 0:
+                s_t = np.power(10, np.linspace(start=-2, stop=1, num=num)) 
+                sendbuf = np.array(np.split(s_t, self.MPI_SIZE))
+            recvbuf = np.empty(chunk_size)
+            self.MPI_COMM.Scatter(sendbuf, recvbuf, root=0)
+
+            # Do the calculations
+            _my_s_t = recvbuf
+            for i in range(len(_my_s_t)):
+                build_hamiltonian_func[type_](t, s=_my_s_t[i] * t)
+                evals.append(self.hamiltonian[type_].get_eigvals())
+            self.MPI_COMM.Barrier()
+
+            # Gather back the evals
+            sendbuf = np.array(evals)
+            recvbuf = None
+            if self.MPI_RANK == 0:
+                recvbuf = np.empty([self.MPI_SIZE] + list(sendbuf.shape))
+            self.MPI_COMM.Gather(sendbuf, recvbuf, root=0)
+
+            if self.MPI_RANK != 0:
+                return
+            
+            assert isinstance(recvbuf, np.ndarray)
+            _shape = recvbuf.shape
+            evals = recvbuf.reshape(_shape[0] * _shape[1], *_shape[2:])
+        
+        # From here on only rank zero if MPI
 
         # reshape evals list according to the evolution of each eval under t_s
-        evals_new = np.array(evals).T
+        evals_new = evals.T
+        print(evals_new.shape)
 
         num_eigv = len(evals_new)
         # put all EV's on the same plot
@@ -177,7 +231,7 @@ class Lattice:
             P.ax.set_xscale("log")
             P.ax.set_title(
                 "Spectrum "
-                + str(type)
+                + str(type_)
                 + ", "
                 + str(self.matrix_type)
                 + " matrices"
@@ -199,7 +253,7 @@ class Lattice:
             P.ax[n].set_xscale("log")
             P.ax.set_title(
                 "Spectrum "
-                + str(type)
+                + str(type_)
                 + ", "
                 + str(self.matrix_type)
                 + " matrices"
@@ -209,7 +263,7 @@ class Lattice:
             P.ax.set_ylabel(r"$E_n$")
 
         P.savefig(
-            os.path.join(HOME_FOLDER, "..", "plots", "spectrum_" + str(type) + ".png")
+            os.path.join(HOME_FOLDER, "..", "plots", "spectrum_" + str(type_) + ".png")
         )
 
 
@@ -237,7 +291,7 @@ def condensate_frac(init_L, matrix_type) -> None:
             rho = np.ndarray((L + 1, L + 1))
             lattice.build_hamiltonian_ed(t=t, s=s_t[i] * t)
 
-            evalues, evectors = lattice.Hamiltonian.get_eigsys()
+            evalues, evectors = lattice.hamiltonian["exact"].get_eigsys()
 
             # get ground state of Hamiltonian
             ground = evectors[:, np.where(evalues == min(evalues))][:, :, 0]
@@ -336,16 +390,16 @@ def condensate_frac(init_L, matrix_type) -> None:
 
 
 if __name__ == "__main__":
-    L = 6
+    L = 2
     # "dense" uses ndarray, "sparse" uses scipy.sparse.coo_matrix
-    #test = Lattice(L, "dense")
+    test = Lattice(L, "dense", mpi = True)
 
     # "manual" gives the a) spectrum, anything else gives the c) spectrum
     # the integer input determines after what number of EV's the color scheme repeats, i.e. 2 means that the even and odd EV's are colored alike
 
-    # test.spectrum("manual", 2, True)
-    # test.spectrum("exact", 2, True)
-    condensate_frac(init_L=L, matrix_type="dense")
+    test.spectrum("manual", 2, True)
+    test.spectrum("exact", 2, True)
+    # condensate_frac(init_L=L, matrix_type="dense")
 
     # test.build_hamiltonian_ed(1, -2)
     # print(test.Hamiltonian.matrix)
