@@ -13,20 +13,24 @@ HOME_FOLDER = os.path.abspath(os.path.dirname(__file__))
 
 from QM import *
 
+try:
+    from mpi4py import MPI
+except ModuleNotFoundError as e:
+    MPI = None
 
 class Lattice:
-    def __init__(self, L: int, type: str) -> None:
+    def __init__(self, L: int, type: str, mpi: bool = False) -> None:
         # str that store whether to use dense or spars matrices
         self.matrix_type = type
         self.sparse = self.matrix_type == "sparse"
 
+        self.mpi = mpi if MPI is not None else False
+
         self.L = L
-        self.Hamiltonian_manual = Operator(
-            L=L + 1, matrix=np.zeros((L + 1, L + 1)), sparse=self.sparse
-        )
-        self.Hamiltonian = HBFockOperator(
-            L, sparse=self.sparse
-        )  # Size 2**(L+1) x 2**(L+1)
+        self.hamiltonian = {
+            "manual" : Operator(L=L + 1, matrix=np.zeros((L + 1, L + 1)), sparse=self.sparse),
+            "full"   : HBFockOperator(L, sparse=self.sparse)  # Size 2**(L+1) x 2**(L+1)
+        }
 
     def build_hamiltonian_manual(self, t: float, s: float) -> None:
         """
@@ -43,7 +47,7 @@ class Lattice:
                     else:
                         H[i][j] = -s
 
-        self.Hamiltonian_manual = Operator(L=self.L + 1, matrix=H, sparse=False)
+        self.hamiltonian["manual"] = Operator(L=self.L + 1, matrix=H, sparse=False)
 
     def b_down_single(self) -> HBFockOperator:
         """
@@ -72,22 +76,22 @@ class Lattice:
         buils Hamiltonian from b operators (which corresponds to S+ S- basis)
         """
         # clear Hamiltonian
-        self.Hamiltonian = HBFockOperator(self.L, sparse=self.sparse)
+        self.hamiltonian["full"] = HBFockOperator(self.L, sparse=self.sparse)
 
         for j in range(self.L - 1):
             # PBC
             if j == self.L - 2:
-                self.Hamiltonian += (
+                self.hamiltonian["full"] += (
                     self.b_down_j(j).dagger() @ self.b_down_j(0)
                     + self.b_down_j(j) @ self.b_down_j(0).dagger()
                 ) * -t
             else:
-                self.Hamiltonian += (
+                self.hamiltonian["full"] += (
                     self.b_down_j(j).dagger() @ self.b_down_j(j + 1)
                     + self.b_down_j(j) @ self.b_down_j(j + 1).dagger()
                 ) * -t
             # center hop part doesnt need any PBC separation
-            self.Hamiltonian += (
+            self.hamiltonian["full"] += (
                 self.b_down_j(j).dagger() @ self.b_down_j(self.L)
                 + self.b_down_j(j) @ self.b_down_j(self.L).dagger()
             ) * -s
@@ -104,17 +108,16 @@ class Lattice:
         # manual for the a) plot
         if type == "manual":
             evals = []
-
             for i in range(len(s_t)):
                 self.build_hamiltonian_manual(t, s=s_t[i] * t)
-                evals.append(self.Hamiltonian_manual.get_eigvals())
+                evals.append(self.hamiltonian["manual"].get_eigvals())
 
         # exact for the c) plot
         elif type == "exact":
             evals = []
             for i in range(len(s_t)):
                 self.build_hamiltonian_ed(t, s=s_t[i] * t)
-                evals.append(self.Hamiltonian.get_eigvals())
+                evals.append(self.hamiltonian["full"].get_eigvals())
 
         else:
             raise Exception("type can either be `manual` or `exact`")
