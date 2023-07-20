@@ -381,7 +381,7 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
         # Generate the list of s/ts and scatter it
         if RANK == 0:
             s_t = np.power(10, np.linspace(start=-3, stop=3, num=256))
-            sendbuf = np.array(np.split(s_t, self.MPI_SIZE))
+            sendbuf = np.array(np.split(s_t, SIZE))
         recvbuf = np.empty(chunk_size)
         COMM.Scatter(sendbuf, recvbuf, root=0)
 
