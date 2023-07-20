@@ -1,4 +1,7 @@
+#!/usr/bin/env python3
+
 import numpy as np
+
 import matplotlib.pyplot as plt
 import scipy.sparse as sp
 import scipy.linalg as linalg
@@ -340,7 +343,7 @@ class Lattice:
 
 
 if __name__ == "__main__":
-    L = 6
+    L = 11
     # "dense" uses ndarray, "sparse" uses scipy.sparse.coo_matrix
     test = Lattice(L, "dense")
 
