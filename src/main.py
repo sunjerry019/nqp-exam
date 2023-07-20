@@ -179,22 +179,69 @@ class Lattice:
         # reshape evals list according to the evolution of each eval under t_s
         evals_new = evals.T
 
-        num_eigv = len(evals_new)
+        plotting_func = {
+            "manual": self.plot_manual,  # manual for the a) plot
+            "exact" : self.plot_exact,   # exact for the c) plot
+        } 
+        plotting_func[type_](s_t, evals_new)
+
+    def plot_manual(self, s_t: np.array, evals_new: np.array) -> None:
+
+        P = Plotter(figsize=(6, 4), nrows=1, ncols=1, usetex=True)
+
+        P.ax.plot( 
+            s_t, evals_new[0],
+            label=f"EV {0}", color="k", lw=1.5,
+        )
+        P.ax.plot(
+            s_t, evals_new[1],
+            label=f"all other EV's", color="b", lw=0.7,
+        )
+        for i in range(2, len(evals_new) - 1):
+            # plot without label for the repeats
+            P.ax.plot(
+                s_t, evals_new[i], color="b", lw=0.7,
+            )
+
+        # last EV is magenta
+        P.ax.plot(
+            s_t,
+            evals_new[-1],
+            label="Last EV",
+            color="m",
+            lw=1.5,
+        )
+
+        P.ax.legend()
+        P.ax.set_xscale("log")
+        P.ax.set_title(
+            "Spectrum manual, "
+            + str(self.matrix_type)
+            + " matrices"
+            + f", System size: {self.L}"
+        )
+        P.ax.set_xlabel(r"$s/t$")
+        P.ax.set_ylabel(r"$E_n$")
+
+        P.savefig(os.path.join(HOME_FOLDER, "..", "plots", "spectrum_manual.png"))
+        
+    def plot_exact(self, s_t: np.array, evals_new: np.array) -> None:
 
         # colorlist
         colors = [mcolors.TABLEAU_COLORS[str(a)] for a in mcolors.TABLEAU_COLORS]
-
-        assert rep - 1 <= len(colors), "Not enough unique colors"
-
-        P = Plotter(figsize=(6, 4 * (rep - 1)), nrows=rep - 3, ncols=1, usetex=True)
+        
+        rep = self.L
+        num_eigv = len(evals_new)
 
         for rep_local in range(2, rep - 1):
+            P = Plotter(figsize=(6, 4), nrows=1, ncols=1, usetex=True)
+
             n = 0
             while n <= math.ceil(num_eigv / rep_local):
                 for i in range(rep_local):
                     # first EV is black
                     if n * rep_local + i == 0:
-                        P.ax[rep_local - 2].plot(
+                        P.ax.plot(
                             s_t,
                             evals_new[n * rep_local + i],
                             label=f"EV {n*rep_local+i}",
@@ -206,7 +253,7 @@ class Lattice:
                     elif n * rep_local + i < num_eigv - 1:
                         # plot with label for first round
                         if n * rep_local + i <= rep_local:
-                            P.ax[rep_local - 2].plot(
+                            P.ax.plot(
                                 s_t,
                                 evals_new[n * rep_local + i],
                                 label=f"EV {n*rep_local+i} +"
@@ -218,7 +265,7 @@ class Lattice:
 
                         # plot without label for the repeats
                         else:
-                            P.ax[rep_local - 2].plot(
+                            P.ax.plot(
                                 s_t,
                                 evals_new[n * rep_local + i],
                                 color=colors[i],
@@ -227,7 +274,7 @@ class Lattice:
 
                     # last EV is magenta
                     elif n * rep_local + i == num_eigv - 1:
-                        P.ax[rep_local - 2].plot(
+                        P.ax.plot(
                             s_t,
                             evals_new[n * rep_local + i],
                             label="Last EV",
@@ -242,44 +289,22 @@ class Lattice:
             P.ax.set_xscale("log")
             P.ax.set_title(
                 "Spectrum "
-                + str(type_)
+                + "Exact"
                 + ", "
                 + str(self.matrix_type)
                 + " matrices"
                 + f", System size: {self.L}"
                 + f", reps = {rep_local}"
             )
-            P.ax[rep_local - 2].set_xlabel(r"$s/t$")
-            P.ax[rep_local - 2].set_ylabel(r"$E_n$")
-
-        # plot every EV on separate subplot (better with pdf)
-        else:
-            P = Plotter(figsize=(6, 3 * num_eigv), nrows=num_eigv, ncols=1, usetex=True)
-            for n in range(num_eigv):
-                P.ax[n].plot(
-                    s_t,
-                    evals_new[n],
-                    label=f"EV {n}",
-                )
-            P.ax[n].legend()
-            P.ax[n].set_xscale("log")
-            P.ax.set_title(
-                "Spectrum "
-                + str(type_)
-                + ", "
-                + str(self.matrix_type)
-                + " matrices"
-                + f", System size: {self.L}"
-            )
             P.ax.set_xlabel(r"$s/t$")
             P.ax.set_ylabel(r"$E_n$")
 
         P.savefig(
-            os.path.join(HOME_FOLDER, "..", "plots", "spectrum_" + str(type_) + ".png")
+            os.path.join(HOME_FOLDER, "..", "plots", "spectrum_" + "Exact" + "reps_" + str(rep_local) + ".png")
         )
 
 
-def condensate_frac(init_L, matrix_type) -> None:
+def condensate_frac(init_L, matrix_type, mpi: bool = False) -> None:
     """
     provides plot for d)
     """
@@ -343,7 +368,7 @@ def condensate_frac(init_L, matrix_type) -> None:
             np.any(np.isnan(x[1])) == True
             or np.any(np.isinf(x[1])) == True
             or int(x[2]) >= 1
-            or np.real(x[1]) >= 1
+            #or np.real(x[1]) >= 1
         ):
             continue
         else:
@@ -393,7 +418,7 @@ def condensate_frac(init_L, matrix_type) -> None:
     # Plotting
     for i in range(2):
         G.ax[i].set_xscale("log")
-        G.ax[i].set_ylim(0, 1)
+        G.ax[i].set_ylim(0, 1.2)
         G.ax[i].set_title(
             r"Condensate fraction $\frac{n_0}{N}$ with "
             + str(matrix_type)
@@ -406,7 +431,7 @@ def condensate_frac(init_L, matrix_type) -> None:
 
 
 if __name__ == "__main__":
-    L = 9
+    L = 5
     # "dense" uses ndarray, "sparse" uses scipy.sparse.coo_matrix
     test = Lattice(L, "dense", mpi=True)
 
