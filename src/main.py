@@ -29,7 +29,7 @@ class Lattice:
         self.L = L
         self.hamiltonian = {
             "manual" : Operator(L=L + 1, matrix=np.zeros((L + 1, L + 1)), sparse=self.sparse),
-            "full"   : HBFockOperator(L, sparse=self.sparse)  # Size 2**(L+1) x 2**(L+1)
+            "exact"   : HBFockOperator(L, sparse=self.sparse)  # Size 2**(L+1) x 2**(L+1)
         }
 
     def build_hamiltonian_manual(self, t: float, s: float) -> None:
@@ -76,22 +76,22 @@ class Lattice:
         buils Hamiltonian from b operators (which corresponds to S+ S- basis)
         """
         # clear Hamiltonian
-        self.hamiltonian["full"] = HBFockOperator(self.L, sparse=self.sparse)
+        self.hamiltonian["exact"] = HBFockOperator(self.L, sparse=self.sparse)
 
         for j in range(self.L - 1):
             # PBC
             if j == self.L - 2:
-                self.hamiltonian["full"] += (
+                self.hamiltonian["exact"] += (
                     self.b_down_j(j).dagger() @ self.b_down_j(0)
                     + self.b_down_j(j) @ self.b_down_j(0).dagger()
                 ) * -t
             else:
-                self.hamiltonian["full"] += (
+                self.hamiltonian["exact"] += (
                     self.b_down_j(j).dagger() @ self.b_down_j(j + 1)
                     + self.b_down_j(j) @ self.b_down_j(j + 1).dagger()
                 ) * -t
             # center hop part doesnt need any PBC separation
-            self.hamiltonian["full"] += (
+            self.hamiltonian["exact"] += (
                 self.b_down_j(j).dagger() @ self.b_down_j(self.L)
                 + self.b_down_j(j) @ self.b_down_j(self.L).dagger()
             ) * -s
@@ -117,7 +117,7 @@ class Lattice:
             evals = []
             for i in range(len(s_t)):
                 self.build_hamiltonian_ed(t, s=s_t[i] * t)
-                evals.append(self.hamiltonian["full"].get_eigvals())
+                evals.append(self.hamiltonian["exact"].get_eigvals())
 
         else:
             raise Exception("type can either be `manual` or `exact`")
