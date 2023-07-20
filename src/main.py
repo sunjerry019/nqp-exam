@@ -18,6 +18,7 @@ try:
 except ModuleNotFoundError as e:
     MPI = None
 
+
 class Lattice:
     def __init__(self, L: int, type: str, mpi: bool = False) -> None:
         # str that store whether to use dense or spars matrices
@@ -33,8 +34,10 @@ class Lattice:
 
         self.L = L
         self.hamiltonian = {
-            "manual" : Operator(L=L + 1, matrix=np.zeros((L + 1, L + 1)), sparse=self.sparse),
-            "exact"   : HBFockOperator(L, sparse=self.sparse)  # Size 2**(L+1) x 2**(L+1)
+            "manual": Operator(
+                L=L + 1, matrix=np.zeros((L + 1, L + 1)), sparse=self.sparse
+            ),
+            "exact": HBFockOperator(L, sparse=self.sparse),  # Size 2**(L+1) x 2**(L+1)
         }
 
     def build_hamiltonian_manual(self, t: float, s: float) -> None:
@@ -107,11 +110,10 @@ class Lattice:
 
         """
         # values of t and s for plot
-        
 
         build_hamiltonian_func = {
-            "manual": self.build_hamiltonian_manual, # manual for the a) plot
-            "exact" : self.build_hamiltonian_ed      # exact for the c) plot
+            "manual": self.build_hamiltonian_manual,  # manual for the a) plot
+            "exact": self.build_hamiltonian_ed,  # exact for the c) plot
         }
 
         if type_ not in build_hamiltonian_func:
@@ -135,16 +137,18 @@ class Lattice:
 
             # Parameters
             t = 1
-            num = 100 # num must be a multiple of MPI_SIZE
+            num = 112  # num must be a multiple of MPI_SIZE
             chunk_size = num // self.MPI_SIZE
-            assert num % self.MPI_SIZE == 0, "number of samples not divisible by number of nodes"
+            assert (
+                num % self.MPI_SIZE == 0
+            ), "number of samples not divisible by number of nodes"
 
             # Just in case we have some other function running
-            self.MPI_COMM.Barrier() 
+            self.MPI_COMM.Barrier()
 
             # Generate the list of s/ts and scatter it
             if self.MPI_RANK == 0:
-                s_t = np.power(10, np.linspace(start=-2, stop=1, num=num)) 
+                s_t = np.power(10, np.linspace(start=-2, stop=1, num=num))
                 sendbuf = np.array(np.split(s_t, self.MPI_SIZE))
             recvbuf = np.empty(chunk_size)
             self.MPI_COMM.Scatter(sendbuf, recvbuf, root=0)
@@ -165,16 +169,15 @@ class Lattice:
 
             if self.MPI_RANK != 0:
                 return
-            
+
             assert isinstance(recvbuf, np.ndarray)
             _shape = recvbuf.shape
             evals = recvbuf.reshape(_shape[0] * _shape[1], *_shape[2:])
-        
+
         # From here on only rank zero if MPI
 
         # reshape evals list according to the evolution of each eval under t_s
         evals_new = evals.T
-        print(evals_new.shape)
 
         num_eigv = len(evals_new)
         # put all EV's on the same plot
@@ -295,18 +298,12 @@ def condensate_frac(init_L, matrix_type) -> None:
 
             # get ground state of Hamiltonian
             ground = evectors[:, np.where(evalues == min(evalues))][:, :, 0]
-            print(L,ground.shape)
             ground = HBFockState(L=L, vector=ground, typ=ST.KET)
 
             # fill rho matrix for this s(t)
             for j in range(L):
                 for l in range(L):
                     corr = lattice.correlator(j, l)
-                    print(
-                        ground.dagger().vector.shape,
-                        corr.matrix.shape,
-                        ground.vector.shape,
-                    )
                     p = ground.dagger() @ corr @ ground
                     rho[j][l] = np.real(p)
 
@@ -377,7 +374,7 @@ def condensate_frac(init_L, matrix_type) -> None:
     # Plotting
     for i in range(2):
         G.ax[i].set_xscale("log")
-        #G.ax[i].set_ylim(0, 1)
+        # G.ax[i].set_ylim(0, 1)
         G.ax[i].set_title(
             r"Condensate fraction $\frac{n_0}{N}$ with "
             + str(matrix_type)
@@ -390,16 +387,16 @@ def condensate_frac(init_L, matrix_type) -> None:
 
 
 if __name__ == "__main__":
-    L = 2
+    L = 10
     # "dense" uses ndarray, "sparse" uses scipy.sparse.coo_matrix
-    test = Lattice(L, "dense", mpi = True)
+    test = Lattice(L, "dense", mpi=True)
 
     # "manual" gives the a) spectrum, anything else gives the c) spectrum
     # the integer input determines after what number of EV's the color scheme repeats, i.e. 2 means that the even and odd EV's are colored alike
 
     test.spectrum("manual", 2, True)
     test.spectrum("exact", 2, True)
-    # condensate_frac(init_L=L, matrix_type="dense")
+    condensate_frac(init_L=L, matrix_type="dense")
 
     # test.build_hamiltonian_ed(1, -2)
     # print(test.Hamiltonian.matrix)

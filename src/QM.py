@@ -118,10 +118,11 @@ class State:
         self.vector @= o.matrix
 
         return self
-    
+
     @overload
     def __matmul__(self, o: State) -> Union[float, complex]:
         pass
+
     @overload
     def __matmul__(self, o: State) -> Operator:
         pass
@@ -130,14 +131,16 @@ class State:
     def __matmul__(self, o: Operator) -> State:
         pass
 
-    def __matmul__(self, o: Union[Operator, State]) -> Union[Operator, State, Union[float, complex]]:
+    def __matmul__(
+        self, o: Union[Operator, State]
+    ) -> Union[Operator, State, Union[float, complex]]:
         if self.type == ST.BRA and isinstance(o, Operator):
             return type(self)(self.L, self.vector @ o.matrix, self.type)
         elif self.type == ST.KET and o.type == ST.BRA:
             return self.operator(self.L, self.vector @ o.vector)
         elif self.type == ST.BRA and o.type == ST.KET:
             return (self.vector @ o.vector).flatten()[0]
-        
+
         raise TypeError(f"MatMul not defined for {self.type} and {o}")
 
     # Comparisons
@@ -332,7 +335,6 @@ class HBFockState(State):
         if isinstance(vector, np.matrix):
             vector = np.squeeze(np.asarray(vector))
 
-        print(vector.shape, len(vector))
         assert len(vector) == 2 ** (L + 1), "Fock State vector must be 2**(L+1)"
         super().__init__(L, vector, typ)
         self.operator = HBFockOperator
