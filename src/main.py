@@ -179,6 +179,9 @@ class Lattice:
         # reshape evals list according to the evolution of each eval under t_s
         evals_new = evals.T
 
+        np.savetxt(X = evals_new, fname = os.path.join('..','data',f'evals_new_{self.L}_{type_}.csv'), delimiter = ',')
+        np.savetxt(X = s_t, fname = os.path.join('..','data',f's_t_{self.L}_{type_}.csv'), delimiter = ',')
+
         plotting_func = {
             "manual": self.plot_manual,  # manual for the a) plot
             "exact" : self.plot_exact,   # exact for the c) plot
@@ -223,7 +226,7 @@ class Lattice:
         P.ax.set_xlabel(r"$s/t$")
         P.ax.set_ylabel(r"$E_n$")
 
-        P.savefig(os.path.join(HOME_FOLDER, "..", "plots", "spectrum_manual.png"))
+        P.savefig(os.path.join(HOME_FOLDER, "..", "plots", f"spectrum_manual_{self.L}.png"))
         
     def plot_exact(self, s_t: np.array, evals_new: np.array) -> None:
 
@@ -300,32 +303,32 @@ class Lattice:
             P.ax.set_ylabel(r"$E_n$")
 
         P.savefig(
-            os.path.join(HOME_FOLDER, "..", "plots", "spectrum_" + "Exact" + "reps_" + str(rep_local) + ".png")
+            os.path.join(HOME_FOLDER, "..", "plots", f"spectrum_{self.L}_" + "Exact" + "reps_" + str(rep_local) + ".png")
         )
 
-
-def condensate_frac(init_L, matrix_type, mpi: bool = False) -> None:
+def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
     """
     provides plot for d)
     """
-    # stores initial L value
-    L_init = init_L
 
-    # prepare plot
-    G = Plotter(figsize=(6, 12), nrows=2, ncols=1)
-    # colorlist
-    colors = [mcolors.TABLEAU_COLORS[str(a)] for a in mcolors.TABLEAU_COLORS]
-    rho_values = []
     # storage for the cond frac of this L
-    n_0N_frac = []
-    # Now loops over all L up to the L that the class was initiated with
-    for L in range(1, L_init + 1):
-        # adjust number of sites
-        lattice = Lattice(L, matrix_type)
+    # n_0N_frac = []
+
+    datafile = os.path.join("..", "data", "CF", f"{L}.csv")
+
+    if mpi:
+        COMM = MPI.COMM_WORLD
+        SIZE = COMM.Get_size()
+        RANK = COMM.Get_rank()
+
+    # adjust number of sites
+    lattice = Lattice(L, matrix_type)
+    if not mpi:
         # values of t and s for plot
         t = 1
         s_t = np.power(10, np.linspace(start=-3, stop=3, num=200))
         # get pho for every values of s(t)
+
         for i in range(len(s_t)):
             rho = np.ndarray((L + 1, L + 1))
             lattice.build_hamiltonian_ed(t=t, s=s_t[i] * t)
@@ -354,81 +357,103 @@ def condensate_frac(init_L, matrix_type, mpi: bool = False) -> None:
             rho_values = np.sort(np.unique(rho_values))
             # store s_t, condensation fraction, rho, L
             N, L = np.real(N), np.real(L)
-            n_0N_frac.append([s_t[i], max(evalues_rho) / N, N / L, L])
+            # n_0N_frac.append([s_t[i], max(evalues_rho) / N, N / L, L])
+            
+            with open(datafile, 'a') as df:
+                df.write(f"{s_t[i]},{max(evalues_rho) / N}, {N/L}\n")
+    else:
+        # Buffers
+        evals = []
+        sendbuf = None
+        recvbuf = None
 
-    n_0N_frac = np.array(n_0N_frac)
-    # keep track of the rhos already plotted with legend
-    L_already_labeled = []
-    # keep track of the rhos already plotted with legend
-    rho_already_labeled = []
-    # plot condensation frac against s_t and color according to rho
-    for x in n_0N_frac:
-        # check for nan's and infs (low L's may have 0 particles in them)
-        if (
-            np.any(np.isnan(x[1])) == True
-            or np.any(np.isinf(x[1])) == True
-            or int(x[2]) >= 1
-            #or np.real(x[1]) >= 1
-        ):
-            continue
-        else:
-            # odd L's
-            if np.real(x[3]) % 2 != 0:
-                # label with rho and L values and choose new color if rho is new
-                if x[2] not in rho_already_labeled:
-                    x = np.real(x)
-                    G.ax[0].scatter(
-                        x[0],
-                        x[1],
-                        s=3,
-                        label=r"$\rho$ = %.3f" % (x[2]) + f", L = {int(x[3])}",
-                        color=colors[np.where(rho_values == x[2])[0][0]],
-                    )
-                    rho_already_labeled.append(x[2])
-                # plot unlabeled if rho already appeared
-                else:
-                    G.ax[0].scatter(
-                        x[0],
-                        x[1],
-                        s=3,
-                        color=colors[np.where(rho_values == x[2])[0][0]],
-                    )
-            # even L's
-            else:
-                # label with rho and L values and choose new color if rho is new
-                if x[3] not in L_already_labeled:
-                    x = np.real(x)
-                    G.ax[1].scatter(
-                        x[0],
-                        x[1],
-                        s=3,
-                        label=r"$\rho$ = %.3f" % (x[2]) + f", L = {int(x[3])}",
-                        color=colors[int(x[3])],
-                    )
-                    L_already_labeled.append(x[3])
-                # plot unlabeled if rho already appeared
-                else:
-                    G.ax[1].scatter(
-                        x[0],
-                        x[1],
-                        s=3,
-                        color=colors[int(x[3])],
-                    )
+        # Parameters
+        t = 1
+        num = 112  # num must be a multiple of MPI_SIZE
+        chunk_size = num // SIZE
+        assert (
+            num % SIZE == 0
+        ), "number of samples not divisible by number of nodes"
 
-    # Plotting
-    for i in range(2):
-        G.ax[i].set_xscale("log")
-        G.ax[i].set_ylim(0, 1.2)
-        G.ax[i].set_title(
-            r"Condensate fraction $\frac{n_0}{N}$ with "
-            + str(matrix_type)
-            + " matrices"
-        )
-        G.ax[i].set_xlabel(r"$s/t$")
-        G.ax[i].set_ylabel(r"$\frac{n_0}{N}$")
-        G.ax[i].legend()
-    G.savefig(os.path.join(HOME_FOLDER, "..", "plots", "condensate_fraction.png"))
+        # Just in case we have some other function running
+        COMM.Barrier()
 
+        # Generate the list of s/ts and scatter it
+        if RANK == 0:
+            s_t = np.power(10, np.linspace(start=-3, stop=3, num=256))
+            sendbuf = np.array(np.split(s_t, self.MPI_SIZE))
+        recvbuf = np.empty(chunk_size)
+        COMM.Scatter(sendbuf, recvbuf, root=0)
+
+        # Do the calculations
+        _my_s_t = recvbuf
+        s_t_value = np.empty(shape = (len(_my_s_t),))
+        cond_frac = np.empty(shape = (len(_my_s_t),))
+        density   = np.empty(shape = (len(_my_s_t),))
+
+        for i in range(len(_my_s_t)):
+            rho = np.ndarray((L + 1, L + 1))
+            lattice.build_hamiltonian_ed(t=t, s=s_t[i] * t)
+
+            evalues, evectors = lattice.hamiltonian["exact"].get_eigsys()
+
+            # get ground state of Hamiltonian
+            ground = evectors[:, np.where(evalues == min(evalues))][:, :, 0]
+            ground = HBFockState(L=L, vector=ground, typ=ST.KET)
+
+            # fill rho matrix for this s(t)
+            for j in range(L):
+                for l in range(L):
+                    corr = lattice.correlator(j, l)
+                    p = ground.dagger() @ corr @ ground
+                    rho[j][l] = np.real(p)
+
+            rho = np.where(np.isnan(rho) == True, 0, rho)
+
+            # get rho evals
+            evalues_rho = np.linalg.eigvals(rho)
+            # get N
+            N = np.round(np.trace(rho))
+            # store s_t, condensation fraction, rho, L
+            N, L = np.real(N), np.real(L)
+
+            s_t_value[i] = s_t[i]
+            cond_frac[i] = max(evalues_rho) / N
+            density[i] = N/L
+        COMM.Barrier()
+
+        # Gather back the evals
+        recvbuf_s_t_value = None
+        recvbuf_cond_frac = None
+        recvbuf_density   = None
+        if RANK == 0:
+            recvbuf_s_t_value = np.empty([SIZE] + list(s_t_value.shape))
+            recvbuf_cond_frac = np.empty([SIZE] + list(cond_frac.shape))
+            recvbuf_density   = np.empty([SIZE] + list(density.shape))
+
+        COMM.Gather(s_t_value, recvbuf_s_t_value, root=0)
+        COMM.Gather(cond_frac, recvbuf_cond_frac, root=0)
+        COMM.Gather(density, recvbuf_density, root=0)
+
+        if RANK != 0:
+            return
+    
+        # Here Rank == 0
+        assert isinstance(recvbuf_s_t_value, np.ndarray)
+        assert isinstance(recvbuf_cond_frac, np.ndarray)
+        assert isinstance(recvbuf_density, np.ndarray)
+        _shape_s_t_value = recvbuf_s_t_value.shape
+        _shape_cond_frac = recvbuf_cond_frac.shape
+        _shape_density   = recvbuf_density.shape
+
+        s_t_value = recvbuf_s_t_value.reshape(_shape_s_t_value[0] * _shape_s_t_value[1], *_shape_s_t_value[2:])
+        cond_frac = recvbuf_cond_frac.reshape(_shape_cond_frac[0] * _shape_cond_frac[1], *_shape_cond_frac[2:])
+        density   = recvbuf_density.reshape(_shape_density[0] * _shape_density[1], *_shape_density[2:])
+
+        with open(datafile, 'a') as df:
+            for k in range(len(s_t_value)):
+                df.write(f"{s_t_value[k]},{cond_frac[k]}, {density[k]}\n")
+        
 
 if __name__ == "__main__":
     L = 5
