@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/home/y/Yudong.Sun/0_modules/NQP/nqp-exam/src/main.py", line 353, in <module>
+    test.spectrum("manual", 2, True)
+  File "/home/y/Yudong.Sun/0_modules/NQP/nqp-exam/src/main.py", line 111, in spectrum
+    evals[i]= self.Hamiltonian_manual.get_eigvals()
+  File "/home/y/Yudong.Sun/0_modules/NQP/nqp-exam/src/QM.py", line 251, in get_eigvals
+    hermitian = scipy.linalg.ishermitian(self.matrix)
+AttributeError: module 'scipy.linalg' has no attribute 'ishermitian'
