@@ -74,9 +74,9 @@ class Lattice:
         # clear Hamiltonian
         self.Hamiltonian = HBFockOperator(self.L, sparse=self.sparse)
 
-        for j in range(self.L - 1):
+        for j in range(self.L):
             # PBC
-            if j == self.L - 2:
+            if j == self.L - 1:
                 self.Hamiltonian += (
                     self.b_down_j(j).dagger() @ self.b_down_j(0)
                     + self.b_down_j(j) @ self.b_down_j(0).dagger()
@@ -92,125 +92,155 @@ class Lattice:
                 + self.b_down_j(j) @ self.b_down_j(self.L).dagger()
             ) * -s
 
-    def spectrum(self, type: str, rep: int, shareplot: bool = True) -> None:
-        """
-        provides plots for a) and c) depending on the "type" argument
-
-        """
+    def spectrum_manual(self) -> None:
         # values of t and s for plot
         t = 1
         s_t = np.power(10, np.linspace(start=-2, stop=1, num=100))
 
-        # manual for the a) plot
-        if type == "manual":
-            evals = []
+        evals = []
 
-            for i in range(len(s_t)):
-                self.build_hamiltonian_manual(t, s=s_t[i] * t)
-                evals.append(self.Hamiltonian_manual.get_eigvals())
+        for i in range(len(s_t)):
+            self.build_hamiltonian_manual(t, s=s_t[i] * t)
+            evals.append(self.Hamiltonian_manual.get_eigvals())
 
-        # exact for the c) plot
-        elif type == "exact":
-            evals = []
-            for i in range(len(s_t)):
-                self.build_hamiltonian_ed(t, s=s_t[i] * t)
-                evals.append(self.Hamiltonian.get_eigvals())
+        evals_new = np.array(evals).T
+        num_eigv = len(evals_new)
 
-        else:
-            raise Exception("type can either be `manual` or `exact`")
+        P = Plotter(figsize=(6, 4), nrows=1, ncols=1, usetex=True)
+
+        P.ax.plot(
+            s_t,
+            evals_new[0],
+            label=f"EV {0}",
+            color="k",
+            lw=1.5,
+        )
+        P.ax.plot(
+            s_t,
+            evals_new[1],
+            label=f"all other EV's",
+            color="b",
+            lw=0.7,
+        )
+        for i in range(2, num_eigv - 1):
+            # plot without label for the repeats
+            P.ax.plot(
+                s_t,
+                evals_new[i],
+                color="b",
+                lw=0.7,
+            )
+
+        # last EV is magenta
+        P.ax.plot(
+            s_t,
+            evals_new[-1],
+            label="Last EV",
+            color="m",
+            lw=1.5,
+        )
+
+        P.ax.legend()
+        P.ax.set_xscale("log")
+        P.ax.set_title(
+            "Spectrum manual, "
+            + str(self.matrix_type)
+            + " matrices"
+            + f", System size: {self.L}"
+        )
+        P.ax.set_xlabel(r"$s/t$")
+        P.ax.set_ylabel(r"$E_n$")
+
+        P.savefig(os.path.join(HOME_FOLDER, "..", "plots", "spectrum_manual.png"))
+
+    def spectrum_exact(self) -> None:
+        """
+        provides plots for c)
+
+        """
+        rep = self.L
+        # values of t and s for plot
+        t = 1
+        s_t = np.power(10, np.linspace(start=-2, stop=1, num=100))
+
+        evals = []
+        for i in range(len(s_t)):
+            self.build_hamiltonian_ed(t, s=s_t[i] * t)
+            evals.append(self.Hamiltonian.get_eigvals())
 
         # reshape evals list according to the evolution of each eval under t_s
         evals_new = np.array(evals).T
-
         num_eigv = len(evals_new)
-        # put all EV's on the same plot
-        # Plot routine that colors the eigenvalues according to a specific coloring cycle
-        # This allows to i.e. color all odd and even n Eigenvalues E_n in the same color or every third, fourth, ...
-        if shareplot == True:
-            P = Plotter(figsize=(6, 4), nrows=1, ncols=1, usetex=True)
+
+        # colorlist
+        colors = [mcolors.TABLEAU_COLORS[str(a)] for a in mcolors.TABLEAU_COLORS]
+
+        assert rep - 1 <= len(colors), "Not enough unique colors"
+
+        P = Plotter(figsize=(6, 4 * (rep - 1)), nrows=rep - 3, ncols=1, usetex=True)
+
+        for rep_local in range(2, rep - 1):
             n = 0
-            # rep assigns the number after which to cycle back to the starting color
-            while n <= math.ceil(num_eigv / rep):
-                # color list has something like 12 entries, should suffice
-                colors = [
-                    mcolors.TABLEAU_COLORS[str(a)] for a in mcolors.TABLEAU_COLORS
-                ]
-                for i in range(rep):
+            while n <= math.ceil(num_eigv / rep_local):
+                for i in range(rep_local):
                     # first EV is black
-                    if n * rep + i == 0:
-                        P.ax.plot(
+                    if n * rep_local + i == 0:
+                        P.ax[rep_local - 2].plot(
                             s_t,
-                            evals_new[n * rep + i],
-                            label=f"EV {n*rep+i}",
+                            evals_new[n * rep_local + i],
+                            label=f"EV {n*rep_local+i}",
                             color="k",
                             lw=1.5,
                         )
+
                     # all intermediate EV's
-                    elif n * rep + i < num_eigv - 1:
+                    elif n * rep_local + i < num_eigv - 1:
                         # plot with label for first round
-                        if n * rep + i <= rep:
-                            P.ax.plot(
+                        if n * rep_local + i <= rep_local:
+                            P.ax[rep_local - 2].plot(
                                 s_t,
-                                evals_new[n * rep + i],
-                                label=f"EV {n*rep+i} +" + str(rep) + "n",
+                                evals_new[n * rep_local + i],
+                                label=f"EV {n*rep_local+i} +"
+                                + str(rep_local)
+                                + r"$n, n \in {1,2,...}$",
                                 color=colors[i],
                                 lw=0.7,
                             )
+
                         # plot without label for the repeats
                         else:
-                            P.ax.plot(
-                                s_t, evals_new[n * rep + i], color=colors[i], lw=0.7
+                            P.ax[rep_local - 2].plot(
+                                s_t,
+                                evals_new[n * rep_local + i],
+                                color=colors[i],
+                                lw=0.7,
                             )
+
                     # last EV is magenta
-                    elif n * rep + i == num_eigv - 1:
-                        P.ax.plot(
+                    elif n * rep_local + i == num_eigv - 1:
+                        P.ax[rep_local - 2].plot(
                             s_t,
-                            evals_new[n * rep + i],
+                            evals_new[n * rep_local + i],
                             label="Last EV",
                             color="m",
                             lw=1.5,
                         )
+
                 n += 1
 
-            # make plot fancy
-            P.ax.legend()
-            P.ax.set_xscale("log")
-            P.ax.set_title(
-                "Spectrum "
-                + str(type)
-                + ", "
+            P.ax[rep_local - 2].legend()
+            P.ax[rep_local - 2].set_xscale("log")
+            P.ax[rep_local - 2].set_title(
+                "Spectrum exact, "
                 + str(self.matrix_type)
                 + " matrices"
                 + f", System size: {self.L}"
+                + f", reps = {rep_local}"
             )
-            P.ax.set_xlabel(r"$s/t$")
-            P.ax.set_ylabel(r"$E_n$")
+            P.ax[rep_local - 2].set_xlabel(r"$s/t$")
+            P.ax[rep_local - 2].set_ylabel(r"$E_n$")
 
-        # plot every EV on separate subplot (better with pdf)
-        else:
-            P = Plotter(figsize=(6, 3 * num_eigv), nrows=num_eigv, ncols=1, usetex=True)
-            for n in range(num_eigv):
-                P.ax[n].plot(
-                    s_t,
-                    evals_new[n],
-                    label=f"EV {n}",
-                )
-            P.ax[n].legend()
-            P.ax[n].set_xscale("log")
-            P.ax.set_title(
-                "Spectrum "
-                + str(type)
-                + ", "
-                + str(self.matrix_type)
-                + " matrices"
-                + f", System size: {self.L}"
-            )
-            P.ax.set_xlabel(r"$s/t$")
-            P.ax.set_ylabel(r"$E_n$")
-
-        P.savefig(
-            os.path.join(HOME_FOLDER, "..", "plots", "spectrum_" + str(type) + ".png")
-        )
+        P.savefig(os.path.join(HOME_FOLDER, "..", "plots", "spectrum_exact.png"))
 
 
 def condensate_frac(init_L, matrix_type) -> None:
@@ -222,6 +252,8 @@ def condensate_frac(init_L, matrix_type) -> None:
 
     # prepare plot
     G = Plotter(figsize=(6, 12), nrows=2, ncols=1)
+    # colorlist
+    colors = [mcolors.TABLEAU_COLORS[str(a)] for a in mcolors.TABLEAU_COLORS]
     rho_values = []
     # storage for the cond frac of this L
     n_0N_frac = []
@@ -241,20 +273,16 @@ def condensate_frac(init_L, matrix_type) -> None:
 
             # get ground state of Hamiltonian
             ground = evectors[:, np.where(evalues == min(evalues))][:, :, 0]
-            print(L,ground.shape)
             ground = HBFockState(L=L, vector=ground, typ=ST.KET)
 
             # fill rho matrix for this s(t)
             for j in range(L):
                 for l in range(L):
                     corr = lattice.correlator(j, l)
-                    print(
-                        ground.dagger().vector.shape,
-                        corr.matrix.shape,
-                        ground.vector.shape,
-                    )
                     p = ground.dagger() @ corr @ ground
                     rho[j][l] = np.real(p)
+
+            rho = np.where(np.isnan(rho) == True, 0, rho)
 
             # get rho evals
             evalues_rho = np.linalg.eigvals(rho)
@@ -266,8 +294,6 @@ def condensate_frac(init_L, matrix_type) -> None:
             # store s_t, condensation fraction, rho, L
             N, L = np.real(N), np.real(L)
             n_0N_frac.append([s_t[i], max(evalues_rho) / N, N / L, L])
-            # colormap for the rhos
-            colors = [mcolors.TABLEAU_COLORS[str(a)] for a in mcolors.TABLEAU_COLORS]
 
     n_0N_frac = np.array(n_0N_frac)
     # keep track of the rhos already plotted with legend
@@ -276,54 +302,62 @@ def condensate_frac(init_L, matrix_type) -> None:
     rho_already_labeled = []
     # plot condensation frac against s_t and color according to rho
     for x in n_0N_frac:
-        # odd L's
-
-        if np.real(x[3]) % 2 != 0:
-            # label with rho and L values and choose new color if rho is new
-            if x[2] not in rho_already_labeled:
-                x = np.real(x)
-                G.ax[0].scatter(
-                    x[0],
-                    x[1],
-                    s=3,
-                    label=r"$\rho$ = %.3f" % (x[2]) + f", L = {int(x[3])}",
-                    color=colors[np.where(rho_values == x[2])[0][0]],
-                )
-                rho_already_labeled.append(x[2])
-            # plot unlabeled if rho already appeared
-            else:
-                G.ax[0].scatter(
-                    x[0],
-                    x[1],
-                    s=3,
-                    color=colors[np.where(rho_values == x[2])[0][0]],
-                )
-        # even L's
+        # check for nan's and infs (low L's may have 0 particles in them)
+        if (
+            np.any(np.isnan(x[1])) == True
+            or np.any(np.isinf(x[1])) == True
+            or int(x[2]) >= 1
+            or np.real(x[1]) >= 1
+        ):
+            continue
         else:
-            # label with rho and L values and choose new color if rho is new
-            if x[3] not in L_already_labeled:
-                x = np.real(x)
-                G.ax[1].scatter(
-                    x[0],
-                    x[1],
-                    s=3,
-                    label=r"$\rho$ = %.3f" % (x[2]) + f", L = {int(x[3])}",
-                    color=colors[int(x[3])],
-                )
-                L_already_labeled.append(x[3])
-            # plot unlabeled if rho already appeared
+            # odd L's
+            if np.real(x[3]) % 2 != 0:
+                # label with rho and L values and choose new color if rho is new
+                if x[2] not in rho_already_labeled:
+                    x = np.real(x)
+                    G.ax[0].scatter(
+                        x[0],
+                        x[1],
+                        s=3,
+                        label=r"$\rho$ = %.3f" % (x[2]) + f", L = {int(x[3])}",
+                        color=colors[np.where(rho_values == x[2])[0][0]],
+                    )
+                    rho_already_labeled.append(x[2])
+                # plot unlabeled if rho already appeared
+                else:
+                    G.ax[0].scatter(
+                        x[0],
+                        x[1],
+                        s=3,
+                        color=colors[np.where(rho_values == x[2])[0][0]],
+                    )
+            # even L's
             else:
-                G.ax[1].scatter(
-                    x[0],
-                    x[1],
-                    s=3,
-                    color=colors[int(x[3])],
-                )
+                # label with rho and L values and choose new color if rho is new
+                if x[3] not in L_already_labeled:
+                    x = np.real(x)
+                    G.ax[1].scatter(
+                        x[0],
+                        x[1],
+                        s=3,
+                        label=r"$\rho$ = %.3f" % (x[2]) + f", L = {int(x[3])}",
+                        color=colors[int(x[3])],
+                    )
+                    L_already_labeled.append(x[3])
+                # plot unlabeled if rho already appeared
+                else:
+                    G.ax[1].scatter(
+                        x[0],
+                        x[1],
+                        s=3,
+                        color=colors[int(x[3])],
+                    )
 
     # Plotting
     for i in range(2):
         G.ax[i].set_xscale("log")
-        #G.ax[i].set_ylim(0, 1)
+        G.ax[i].set_ylim(0, 1)
         G.ax[i].set_title(
             r"Condensate fraction $\frac{n_0}{N}$ with "
             + str(matrix_type)
@@ -336,16 +370,12 @@ def condensate_frac(init_L, matrix_type) -> None:
 
 
 if __name__ == "__main__":
-    L = 6
+    L = 9
     # "dense" uses ndarray, "sparse" uses scipy.sparse.coo_matrix
-    #test = Lattice(L, "dense")
+    test = Lattice(L, "sparse")
 
-    # "manual" gives the a) spectrum, anything else gives the c) spectrum
-    # the integer input determines after what number of EV's the color scheme repeats, i.e. 2 means that the even and odd EV's are colored alike
+    # "manual" gives the a) spectrum, exact else gives the c) spectrum
+    # test.spectrum_manual()
+    # test.spectrum_exact()
 
-    # test.spectrum("manual", 2, True)
-    # test.spectrum("exact", 2, True)
     condensate_frac(init_L=L, matrix_type="dense")
-
-    # test.build_hamiltonian_ed(1, -2)
-    # print(test.Hamiltonian.matrix)

@@ -332,7 +332,6 @@ class HBFockState(State):
         if isinstance(vector, np.matrix):
             vector = np.squeeze(np.asarray(vector))
 
-        print(vector.shape, len(vector))
         assert len(vector) == 2 ** (L + 1), "Fock State vector must be 2**(L+1)"
         super().__init__(L, vector, typ)
         self.operator = HBFockOperator
