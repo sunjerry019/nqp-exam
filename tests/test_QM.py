@@ -21,3 +21,7 @@ def test_fock_state():
         tstate = QM.HBFockState.from_fock_repr(vector = state, typ = QM.ST.BRA)
 
         assert (tstate @ test.b_down_j(i).dagger() @ init_state) == 1
+
+def test_norm():
+    state = QM.HBFockState.from_fock_repr(vector = [1, 0, 1], typ = QM.ST.KET)
+    assert np.isclose(state.dagger() @ state, 1)

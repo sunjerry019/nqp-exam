@@ -30,6 +30,13 @@ class State:
         elif typ == ST.KET:
             self.vector = self.vector.reshape((-1, 1))
 
+        # normalize the state
+        if not np.any(np.iscomplex(self.vector)):
+            self.vector = self.vector.astype(np.longdouble)
+
+        self.vector /= np.linalg.norm(self.vector)
+        assert np.isclose(np.linalg.norm(self.vector), 1)
+
         self.operator = Operator
 
     def dagger(self) -> State:

@@ -23,7 +23,5 @@ def test_incompatibilities():
     lattice.build_hamiltonian_ed(t = 1, s = 1)
     eigv = lattice.hamiltonian["exact"].get_eigvals()
 
-    
-
 if __name__ == "__main__":
     test_incompatibilities()
