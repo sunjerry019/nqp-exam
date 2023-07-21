@@ -20,9 +20,9 @@ except ModuleNotFoundError as e:
 
 
 class Lattice:
-    def __init__(self, L: int, type: str, mpi: bool = False) -> None:
+    def __init__(self, L: int, type_: str, mpi: bool = False) -> None:
         # str that store whether to use dense or spars matrices
-        self.matrix_type = type
+        self.matrix_type = type_
         self.sparse = self.matrix_type == "sparse"
 
         self.mpi = mpi if MPI is not None else False
@@ -454,7 +454,7 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
         
 
 if __name__ == "__main__":
-    L = 5
+    L = 2
     # "dense" uses ndarray, "sparse" uses scipy.sparse.coo_matrix
     test = Lattice(L, "dense", mpi=True)
 
