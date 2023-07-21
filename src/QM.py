@@ -7,6 +7,7 @@ import enum
 import numpy as np
 import scipy.sparse
 import scipy.linalg
+import scipy.sparse.linalg
 
 from typing import Union, Literal, overload
 
@@ -29,7 +30,19 @@ class State:
         elif typ == ST.KET:
             self.vector = self.vector.reshape((-1, 1))
 
+        # normalize the state
+        self.normalize()
+
         self.operator = Operator
+
+    def normalize(self) -> State:
+        if not np.any(np.iscomplex(self.vector)):
+            self.vector = self.vector.astype(np.longdouble)
+
+        self.vector /= np.linalg.norm(self.vector)
+        assert np.isclose(np.linalg.norm(self.vector), 1)
+
+        return self
 
     def dagger(self) -> State:
         newtype = ST.BRA if self.type == ST.KET else ST.KET
@@ -268,11 +281,21 @@ class Operator:
     def expand_to(self, newL: int, site: int) -> Operator:
         raise NotImplementedError("Not implemented")
 
+    @staticmethod
+    def ishermitian(sparse: bool, matrix: Union[np.ndarray, scipy.linalg.sparse.csc_matrix]) -> bool:
+        if sparse:
+            return Operator.ishermitian(sparse = False, matrix = matrix.todense())
+
+        try:
+            return scipy.linalg.ishermitian(matrix)
+        except AttributeError as e:
+            # We are on the cip pool with python 3.9 and scipy 1.3.3
+            # https://github.com/scipy/scipy/issues/7308#issue-222144044
+            return np.allclose(matrix, np.asmatrix(matrix).getH())
+
+
     def get_eigvals(self):
-        if self.sparse:
-            hermitian = scipy.linalg.ishermitian(self.matrix.todense())
-        else:
-            hermitian = scipy.linalg.ishermitian(self.matrix)
+        hermitian = Operator.ishermitian(self.sparse, self.matrix)
 
         if not self.sparse:
             if hermitian:
@@ -292,10 +315,7 @@ class Operator:
             return eigval
 
     def get_eigsys(self):
-        if self.sparse:
-            hermitian = scipy.linalg.ishermitian(self.matrix.todense())
-        else:
-            hermitian = scipy.linalg.ishermitian(self.matrix)
+        hermitian = Operator.ishermitian(self.sparse, self.matrix)
 
         if not self.sparse:
             if hermitian:

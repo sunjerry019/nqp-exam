@@ -20,9 +20,9 @@ except ModuleNotFoundError as e:
 
 
 class Lattice:
-    def __init__(self, L: int, type: str, mpi: bool = False) -> None:
+    def __init__(self, L: int, type_: str, mpi: bool = False) -> None:
         # str that store whether to use dense or spars matrices
-        self.matrix_type = type
+        self.matrix_type = type_
         self.sparse = self.matrix_type == "sparse"
 
         self.mpi = mpi if MPI is not None else False
