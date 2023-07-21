@@ -194,7 +194,7 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
     # storage for the cond frac of this L
     # n_0N_frac = []
 
-    datafile = os.path.join("..", "data", "CF", f"{L}.csv")
+    datafile = os.path.join("..", "data", "CF_new", f"{L}.csv")
 
     if mpi:
         COMM = MPI.COMM_WORLD
@@ -216,7 +216,7 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
             evalues, evectors = lattice.hamiltonian["exact"].get_eigsys()
 
             # get ground state of Hamiltonian
-            ground = evectors[:, np.where(evalues == min(evalues))][:, :, 0]
+            ground = evectors[:, np.where(evalues == np.min(evalues))][:, :, 0]
             ground = HBFockState(L=L, vector=ground, typ=ST.KET)
 
             # fill rho matrix for this s(t)
@@ -226,18 +226,18 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
                     p = ground.dagger() @ corr @ ground
                     rho[j][l] = np.real(p)
 
-            rho = np.where(np.isnan(rho) == True, 0, rho)
+            # rho = np.where(np.isnan(rho) == True, 0, rho)
 
             # get rho evals
             evalues_rho = np.linalg.eigvals(rho)
             # get N
-            N = np.round(np.trace(rho))
+            N = np.trace(rho)
             # store s_t, condensation fraction, rho, L
             N, L = np.real(N), np.real(L)
             # n_0N_frac.append([s_t[i], max(evalues_rho) / N, N / L, L])
             
             with open(datafile, 'a') as df:
-                df.write(f"{s_t[i]},{max(evalues_rho) / N}, {N/L}\n")
+                df.write(f"{s_t[i]},{np.max(evalues_rho) / N}, {N/(L+1)}\n")
     else:
         # Buffers
         evals = []
@@ -275,7 +275,7 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
             evalues, evectors = lattice.hamiltonian["exact"].get_eigsys()
 
             # get ground state of Hamiltonian
-            ground = evectors[:, np.where(evalues == min(evalues))][:, :, 0]
+            ground = evectors[:, np.where(evalues == np.min(evalues))][:, :, 0]
             ground = HBFockState(L=L, vector=ground, typ=ST.KET)
 
             # fill rho matrix for this s(t)
@@ -285,18 +285,19 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
                     p = ground.dagger() @ corr @ ground
                     rho[j][l] = np.real(p)
 
-            rho = np.where(np.isnan(rho) == True, 0, rho)
+            # rho = np.where(np.isnan(rho) == True, 0, rho)
 
             # get rho evals
             evalues_rho = np.linalg.eigvals(rho)
+            # print(_my_s_t[i], evalues_rho)
             # get N
-            N = np.round(np.trace(rho))
+            N = np.trace(rho)
             # store s_t, condensation fraction, rho, L
             N, L = np.real(N), np.real(L)
 
             s_t_value[i] = _my_s_t[i]
-            cond_frac[i] = np.real(max(evalues_rho)) / N
-            density[i] = N/L
+            cond_frac[i] = np.real(np.max(evalues_rho)) / N
+            density[i] = N/(L + 1)
         COMM.Barrier()
 
         # Gather back the evals
