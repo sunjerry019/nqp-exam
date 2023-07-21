@@ -176,14 +176,14 @@ def plot_cf() -> None:
             df_rho = grouped.get_group(key)
 
             rho = key
-            if df_rho.shape[0] > 3:
+            if df_rho.shape[0] > 6:
                 # plot condensation frac against s_t and color according to rho
                 # odd L's
                 if np.real(L) % 2 != 0:
                     # label with rho and L values and choose new color if rho is new
                     G.ax[0].scatter(
-                        df.iloc[:,0],
-                        df.iloc[:,1],
+                        df_rho.iloc[:,0],
+                        df_rho.iloc[:,1],
                         s=4,
                         label=r"$\rho$ = %.2f" % (rho) + f", L = {int(L)}",
                         color=colors[it_rho],
@@ -191,8 +191,8 @@ def plot_cf() -> None:
                 # even L's
                 else:
                     G.ax[1].scatter(
-                        df.iloc[:,0],
-                        df.iloc[:,1],
+                        df_rho.iloc[:,0],
+                        df_rho.iloc[:,1],
                         s=4,
                         label=r"$\rho$ = %.2f" % (rho) + f", L = {int(L)}",
                         color=colors[it_rho],
@@ -212,7 +212,7 @@ def plot_cf() -> None:
     
     for i in range(2):
         G.ax[i].set_xscale("log")
-        # G.ax[i].set_ylim(0.2, 1)
+        G.ax[i].set_ylim(0.35, 1.05)
         
         G.ax[i].set_ylabel(r"$\frac{n_0}{N}$")
 
@@ -225,7 +225,7 @@ def plot_cf() -> None:
     G.savefig(os.path.join(HOME_FOLDER, "..", "plots", f"condensate_fraction.pdf"),bbox_inches="tight")
 
 if __name__ == "__main__":
-    plot_manual() 
-    plot_exact(manual_subset = False)
-    plot_exact(manual_subset = True)
+    #plot_manual() 
+    #plot_exact(manual_subset = False)
+    #plot_exact(manual_subset = True)
     plot_cf()
