@@ -182,11 +182,11 @@ class Lattice:
         np.savetxt(X = evals_new, fname = os.path.join('..','data',f'evals_new_{self.L}_{type_}.csv'), delimiter = ',')
         np.savetxt(X = s_t, fname = os.path.join('..','data',f's_t_{self.L}_{type_}.csv'), delimiter = ',')
 
-        plotting_func = {
+        """plotting_func = {
             "manual": self.plot_manual,  # manual for the a) plot
             "exact" : self.plot_exact,   # exact for the c) plot
         } 
-        plotting_func[type_](s_t, evals_new)
+        plotting_func[type_](s_t, evals_new)"""
 
     def plot_manual(self, s_t: np.array, evals_new: np.array) -> None:
 
@@ -415,7 +415,7 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
             N, L = np.real(N), np.real(L)
 
             s_t_value[i] = _my_s_t[i]
-            cond_frac[i] = max(evalues_rho) / N
+            cond_frac[i] = np.real(max(evalues_rho)) / N
             density[i] = N/L
         COMM.Barrier()
 
@@ -453,8 +453,8 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
                 df.write(f"{s_t_value[k]},{cond_frac[k]},{density[k]}\n")
         
 
-if __name__ == "__main__":
-    L = 2
+"""if __name__ == "__main__":
+    L = 5
     # "dense" uses ndarray, "sparse" uses scipy.sparse.coo_matrix
     test = Lattice(L, "dense", mpi=True)
 
@@ -464,4 +464,4 @@ if __name__ == "__main__":
 
     test.spectrum("manual")
     test.spectrum("exact")
-    condensate_frac(init_L=L, matrix_type="dense")
+    condensate_frac(L, matrix_type="dense")"""

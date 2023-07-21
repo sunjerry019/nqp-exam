@@ -6,7 +6,7 @@ from QM import *
 import numpy as np
 import sys
 
-L = 2
+"""L = 2
 
 while True:
     lattice = Lattice(L, "sparse", mpi = True)
@@ -15,4 +15,4 @@ while True:
 
     condensate_frac(L, matrix_type="dense", mpi = True)
 
-    L += 1
+    L += 1"""
