@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.colors as mcolors
+import pandas as pd
 
 from plotter import Plotter
 
@@ -9,7 +10,7 @@ import glob
 HOME_FOLDER = os.path.abspath(os.path.dirname(__file__))
 
 colors = [mcolors.TABLEAU_COLORS[str(a)] for a in mcolors.TABLEAU_COLORS]
-colors.extend(['k','m','b'])
+colors.extend(['k','b','m','darkgreen','darkblue','goldenrod', 'lightcoral', 'purple', 'deeppink'])
 
 def plot_manual() -> None:
 
@@ -20,17 +21,17 @@ def plot_manual() -> None:
 
     L = 2
 
-    for filename in glob.glob(os.path.join(dir, "s_t",'*_manual.csv')):
+    for filename in glob.glob(os.path.join(dir, "s_t_final",'*_manual.csv')):
         s_t.append(np.loadtxt(filename, delimiter = ','))
 
-    for filename in glob.glob(os.path.join(dir, "evals_new_SM_prime_prime",'*_manual.csv')):
+    for filename in glob.glob(os.path.join(dir, "evals_new_final",'*_manual.csv')):
         evals_new.append(np.loadtxt(filename, delimiter = ','))
 
     P = Plotter(figsize=(6*2, 4*5), nrows=5, ncols=2, usetex=True)
-    
-    for i in range(3):
+
+    for i in range(5):
         for j in range(2):
-            L = i*2+j+1
+            L = i*2+j
 
             P.ax[i][j].plot( 
                 s_t[L], evals_new[L][0],
@@ -60,7 +61,7 @@ def plot_manual() -> None:
             P.ax[i][j].set_title(
                 "Spectrum manual, "
                 + "sparse matrices"
-                + f", System size: {L+1}"
+                + f", System size: {L+2}"
             )
             if i == 4:
                 P.ax[i][j].set_xlabel(r"$s/t$")
@@ -78,10 +79,10 @@ def plot_exact(manual_subset: bool) -> None:
 
     dir = os.path.join(HOME_FOLDER,"..", 'data')
 
-    for filename in glob.glob(os.path.join(dir, "s_t",'*_exact.csv')):
+    for filename in glob.glob(os.path.join(dir, "s_t_final",'*_exact.csv')):
         s_t.append(np.loadtxt(filename, delimiter = ','))
 
-    for filename in glob.glob(os.path.join(dir, "evals_new_SM_prime_prime",'*_exact.csv')):
+    for filename in glob.glob(os.path.join(dir, "evals_new_final",'*_exact.csv')):
         evals_new.append(np.loadtxt(filename, delimiter = ','))
 
     # option to only plot the first two plots, since they need different ylims to be sensible
@@ -162,76 +163,50 @@ def plot_cf() -> None:
 
     rho_values = np.array([])
 
-    L = 2
-
-    # first gather all unique rho values to color after
+    it_rho = 0
     for filename in glob.glob(os.path.join(dir,'*.csv')):
-        values = np.loadtxt(filename, delimiter = ',')
+        q = os.path.basename(filename)
+        L = int(q[:-4])
+        # values = np.loadtxt(filename, delimiter = ',')
+        # values = values.T
 
-        for x in values:
-            rho_values = np.append(rho_values,x[2])
-        rho_values = np.unique(rho_values)
+        df = pd.read_csv(filename, header = None)
+        df.iloc[:,2] = df.iloc[:,2].apply(lambda x: np.round(x, 2))
+        grouped = df.groupby(df.iloc[:,2])
+        for key, item in grouped:
+            df_rho = grouped.get_group(key)
 
-    for filename in glob.glob(os.path.join(dir,'*.csv')):
-        values = np.loadtxt(filename, delimiter = ',')
-
-        # keep track of the rhos already plotted with legend
-        L_already_labeled = []
-        # keep track of the rhos already plotted with legend
-        rho_already_labeled = []
-        # plot condensation frac against s_t and color according to rho
-        for x in values:
-            # check for nan's and infs (low L's may have 0 particles in them)
-            if (
-                np.any(np.isnan(x[1])) == True
-                or np.any(np.isinf(x[1])) == True
-                or int(x[2]) >= 1
-            ):
-                continue
-            else:
+            rho = key
+            if df_rho.shape[0] > 3:
+                # PLOT
+                # plot condensation frac against s_t and color according to rho
+                # check for nan's and infs (low L's may have 0 particles in them)
+                """if (
+                    np.any(np.isnan(x[1])) == True
+                    or np.any(np.isinf(x[1])) == True
+                    or int(x[2]) >= 1
+                ):"""
                 # odd L's
                 if np.real(L) % 2 != 0:
                     # label with rho and L values and choose new color if rho is new
-                    if x[2] not in rho_already_labeled:
-                        x = np.real(x)
-                        G.ax[0].scatter(
-                            x[0],
-                            x[1],
-                            s=4,
-                            label=r"$\rho$ = %.3f" % (x[2]) + f", L = {int(L)}",
-                            color=colors[np.where(rho_values == x[2])[0][0]],
-                        )
-                        rho_already_labeled.append(x[2])
-                    # plot unlabeled if rho already appeared
-                    else:
-                        G.ax[0].scatter(
-                            x[0],
-                            x[1],
-                            s=4,
-                            color=colors[np.where(rho_values == x[2])[0][0]],
-                        )
+                    G.ax[0].scatter(
+                        df.iloc[:,0],
+                        df.iloc[:,1],
+                        s=4,
+                        label=r"$\rho$ = %.2f" % (rho) + f", L = {int(L)}",
+                        color=colors[it_rho],
+                    )                   
                 # even L's
                 else:
-                    # label with rho and L values and choose new color if rho is new
-                    if L not in L_already_labeled:
-                        x = np.real(x)
-                        G.ax[1].scatter(
-                            x[0],
-                            x[1],
-                            s=4,
-                            label=r"$\rho$ = %.3f" % (x[2]) + f", L = {int(L)}",
-                            color=colors[int(L)],
-                        )
-                        L_already_labeled.append(L)
-                    # plot unlabeled if rho already appeared
-                    else:
-                        G.ax[1].scatter(
-                            x[0],
-                            x[1],
-                            s=4,
-                            color=colors[int(L)],
-                        )
-        L += 1 
+                    G.ax[1].scatter(
+                        df.iloc[:,0],
+                        df.iloc[:,1],
+                        s=4,
+                        label=r"$\rho$ = %.2f" % (rho) + f", L = {int(L)}",
+                        color=colors[it_rho],
+                    )
+                L += 1 
+                it_rho += 1
 
     # Plotting    
 
@@ -245,7 +220,7 @@ def plot_cf() -> None:
     
     for i in range(2):
         G.ax[i].set_xscale("log")
-        G.ax[i].set_ylim(0.4, 1.2)
+        # G.ax[i].set_ylim(0.2, 1)
         
         G.ax[i].set_ylabel(r"$\frac{n_0}{N}$")
 
@@ -258,7 +233,7 @@ def plot_cf() -> None:
     G.savefig(os.path.join(HOME_FOLDER, "..", "plots", f"condensate_fraction.pdf"),bbox_inches="tight")
 
 if __name__ == "__main__":
-    plot_manual() 
-    plot_exact(manual_subset = False)
-    plot_exact(manual_subset = True)
-    # plot_cf()
+    # plot_manual() 
+    # plot_exact(manual_subset = False)
+    # plot_exact(manual_subset = True)
+    plot_cf()
