@@ -453,7 +453,7 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
                 df.write(f"{s_t_value[k]},{cond_frac[k]},{density[k]}\n")
         
 
-if __name__ == "__main__":
+"""if __name__ == "__main__":
     L = 5
     # "dense" uses ndarray, "sparse" uses scipy.sparse.coo_matrix
     test = Lattice(L, "dense", mpi=True)
@@ -464,4 +464,4 @@ if __name__ == "__main__":
 
     test.spectrum("manual")
     test.spectrum("exact")
-    condensate_frac(L, matrix_type="dense")
+    condensate_frac(L, matrix_type="dense")"""
