@@ -332,17 +332,3 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
         with open(datafile, 'a') as df:
             for k in range(len(s_t_value)):
                 df.write(f"{s_t_value[k]},{cond_frac[k]},{density[k]}\n")
-        
-
-"""if __name__ == "__main__":
-    L = 5
-    # "dense" uses ndarray, "sparse" uses scipy.sparse.coo_matrix
-    test = Lattice(L, "dense", mpi=True)
-
-    # "manual" gives the a) spectrum, exact else gives the c) spectrum
-    # test.spectrum_manual()
-    # test.spectrum_exact()
-
-    test.spectrum("manual")
-    test.spectrum("exact")
-    condensate_frac(L, matrix_type="dense")"""

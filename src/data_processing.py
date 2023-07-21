@@ -51,12 +51,13 @@ def plot_manual() -> None:
             P.ax[i][j].plot(
                 s_t[L],
                 evals_new[L][-1],
-                label="Last EV",
+                label=f"Last EV (\#{evals_new[L].shape[0]})",
                 color="m",
                 lw=1.5,
             )
 
             P.ax[i][j].legend()
+            P.ax[i][j].set_ylim(-40,30)
             P.ax[i][j].set_xscale("log")
             P.ax[i][j].set_title(
                 "Spectrum manual, "
@@ -131,7 +132,7 @@ def plot_exact(manual_subset: bool) -> None:
             P.ax[i][j].plot(
                 s_t[L],
                 evals_new[L][-1],
-                label="Last EV",
+                label=f"Last EV (\#{evals_new[L].shape[0]})",
                 color="m",
                 lw=1.5,
             )
@@ -155,7 +156,7 @@ def plot_exact(manual_subset: bool) -> None:
 
 def plot_cf() -> None:
 
-    G = Plotter(figsize=(8, 10), nrows=2, ncols=1, sharex = True)
+    G = Plotter(figsize=(8, 10), nrows=2, ncols=1, sharex = True, usetex= True)
 
     values = np.array([])
 
@@ -167,8 +168,6 @@ def plot_cf() -> None:
     for filename in glob.glob(os.path.join(dir,'*.csv')):
         q = os.path.basename(filename)
         L = int(q[:-4])
-        # values = np.loadtxt(filename, delimiter = ',')
-        # values = values.T
 
         df = pd.read_csv(filename, header = None)
         df.iloc[:,2] = df.iloc[:,2].apply(lambda x: np.round(x, 2))
@@ -178,14 +177,7 @@ def plot_cf() -> None:
 
             rho = key
             if df_rho.shape[0] > 3:
-                # PLOT
                 # plot condensation frac against s_t and color according to rho
-                # check for nan's and infs (low L's may have 0 particles in them)
-                """if (
-                    np.any(np.isnan(x[1])) == True
-                    or np.any(np.isinf(x[1])) == True
-                    or int(x[2]) >= 1
-                ):"""
                 # odd L's
                 if np.real(L) % 2 != 0:
                     # label with rho and L values and choose new color if rho is new
@@ -233,7 +225,7 @@ def plot_cf() -> None:
     G.savefig(os.path.join(HOME_FOLDER, "..", "plots", f"condensate_fraction.pdf"),bbox_inches="tight")
 
 if __name__ == "__main__":
-    # plot_manual() 
-    # plot_exact(manual_subset = False)
-    # plot_exact(manual_subset = True)
+    plot_manual() 
+    plot_exact(manual_subset = False)
+    plot_exact(manual_subset = True)
     plot_cf()
