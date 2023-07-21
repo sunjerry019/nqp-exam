@@ -194,7 +194,7 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
     # storage for the cond frac of this L
     # n_0N_frac = []
 
-    datafile = os.path.join("..", "data", "CF_new", f"{L}.csv")
+    datafile = os.path.join("..", "data", "CF", f"{L}.csv")
 
     if mpi:
         COMM = MPI.COMM_WORLD
