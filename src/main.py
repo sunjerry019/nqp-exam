@@ -179,132 +179,12 @@ class Lattice:
         # reshape evals list according to the evolution of each eval under t_s
         evals_new = evals.T
 
-        np.savetxt(X = evals_new, fname = os.path.join('..','data',f'evals_new_{self.L}_{type_}.csv'), delimiter = ',')
-        np.savetxt(X = s_t, fname = os.path.join('..','data',f's_t_{self.L}_{type_}.csv'), delimiter = ',')
-
-        """plotting_func = {
-            "manual": self.plot_manual,  # manual for the a) plot
-            "exact" : self.plot_exact,   # exact for the c) plot
-        } 
-        plotting_func[type_](s_t, evals_new)"""
-
-    def plot_manual(self, s_t: np.array, evals_new: np.array) -> None:
-
-        P = Plotter(figsize=(6, 4), nrows=1, ncols=1, usetex=True)
-
-        P.ax.plot( 
-            s_t, evals_new[0],
-            label=f"EV {0}", color="k", lw=1.5,
-        )
-        P.ax.plot(
-            s_t, evals_new[1],
-            label=f"all other EV's", color="b", lw=0.7,
-        )
-        for i in range(2, len(evals_new) - 1):
-            # plot without label for the repeats
-            P.ax.plot(
-                s_t, evals_new[i], color="b", lw=0.7,
-            )
-
-        # last EV is magenta
-        P.ax.plot(
-            s_t,
-            evals_new[-1],
-            label="Last EV",
-            color="m",
-            lw=1.5,
-        )
-
-        P.ax.legend()
-        P.ax.set_xscale("log")
-        P.ax.set_title(
-            "Spectrum manual, "
-            + str(self.matrix_type)
-            + " matrices"
-            + f", System size: {self.L}"
-        )
-        P.ax.set_xlabel(r"$s/t$")
-        P.ax.set_ylabel(r"$E_n$")
-
-        P.savefig(os.path.join(HOME_FOLDER, "..", "plots", f"spectrum_manual_{self.L}.png"))
-        
-    def plot_exact(self, s_t: np.array, evals_new: np.array) -> None:
-
-        # colorlist
-        colors = [mcolors.TABLEAU_COLORS[str(a)] for a in mcolors.TABLEAU_COLORS]
-        
-        rep = self.L
-        num_eigv = len(evals_new)
-
-        for rep_local in range(2, rep - 1):
-            P = Plotter(figsize=(6, 4), nrows=1, ncols=1, usetex=True)
-
-            n = 0
-            while n <= math.ceil(num_eigv / rep_local):
-                for i in range(rep_local):
-                    # first EV is black
-                    if n * rep_local + i == 0:
-                        P.ax.plot(
-                            s_t,
-                            evals_new[n * rep_local + i],
-                            label=f"EV {n*rep_local+i}",
-                            color="k",
-                            lw=1.5,
-                        )
-
-                    # all intermediate EV's
-                    elif n * rep_local + i < num_eigv - 1:
-                        # plot with label for first round
-                        if n * rep_local + i <= rep_local:
-                            P.ax.plot(
-                                s_t,
-                                evals_new[n * rep_local + i],
-                                label=f"EV {n*rep_local+i} +"
-                                + str(rep_local)
-                                + r"$n, n \in {1,2,...}$",
-                                color=colors[i],
-                                lw=0.7,
-                            )
-
-                        # plot without label for the repeats
-                        else:
-                            P.ax.plot(
-                                s_t,
-                                evals_new[n * rep_local + i],
-                                color=colors[i],
-                                lw=0.7,
-                            )
-
-                    # last EV is magenta
-                    elif n * rep_local + i == num_eigv - 1:
-                        P.ax.plot(
-                            s_t,
-                            evals_new[n * rep_local + i],
-                            label="Last EV",
-                            color="m",
-                            lw=1.5,
-                        )
-
-                n += 1
-
-            # make plot fancy
-            P.ax.legend()
-            P.ax.set_xscale("log")
-            P.ax.set_title(
-                "Spectrum "
-                + "Exact"
-                + ", "
-                + str(self.matrix_type)
-                + " matrices"
-                + f", System size: {self.L}"
-                + f", reps = {rep_local}"
-            )
-            P.ax.set_xlabel(r"$s/t$")
-            P.ax.set_ylabel(r"$E_n$")
-
-        P.savefig(
-            os.path.join(HOME_FOLDER, "..", "plots", f"spectrum_{self.L}_" + "Exact" + "reps_" + str(rep_local) + ".png")
-        )
+        if self.L > 9:
+            np.savetxt(X = evals_new, fname = os.path.join('..','data',f'evals_new_{self.L}_{type_}.csv'), delimiter = ',')
+            np.savetxt(X = s_t, fname = os.path.join('..','data',f's_t_{self.L}_{type_}.csv'), delimiter = ',')
+        else:
+            np.savetxt(X = evals_new, fname = os.path.join('..','data',f'evals_new_0{self.L}_{type_}.csv'), delimiter = ',')
+            np.savetxt(X = s_t, fname = os.path.join('..','data',f's_t_0{self.L}_{type_}.csv'), delimiter = ',')
 
 def condensate_frac(L, matrix_type, mpi: bool = False, writefile: bool = True) -> None:
     """
@@ -314,7 +194,7 @@ def condensate_frac(L, matrix_type, mpi: bool = False, writefile: bool = True) -
     # storage for the cond frac of this L
     # n_0N_frac = []
 
-    datafile = os.path.join("..", "data", "CF", f"{L}.csv")
+    datafile = os.path.join("..", "data", "CF_new", f"{L}.csv")
 
     if mpi:
         COMM = MPI.COMM_WORLD
@@ -336,29 +216,28 @@ def condensate_frac(L, matrix_type, mpi: bool = False, writefile: bool = True) -
             evalues, evectors = lattice.hamiltonian["exact"].get_eigsys()
 
             # get ground state of Hamiltonian
-            ground = evectors[:, np.where(evalues == min(evalues))][:, :, 0]
+            ground = evectors[:, np.where(evalues == np.min(evalues))][:, :, 0]
             ground = HBFockState(L=L, vector=ground, typ=ST.KET)
 
             # fill rho matrix for this s(t)
-            for j in range(L):
-                for l in range(L):
+            for j in range(L + 1):
+                for l in range(L + 1):
                     corr = lattice.correlator(j, l)
                     p = ground.dagger() @ corr @ ground
                     rho[j][l] = np.real(p)
 
-            rho = np.where(np.isnan(rho) == True, 0, rho)
+            # rho = np.where(np.isnan(rho) == True, 0, rho)
 
             # get rho evals
             evalues_rho = np.linalg.eigvals(rho)
             # get N
-            N = np.round(np.trace(rho))
+            N = np.trace(rho)
             # store s_t, condensation fraction, rho, L
             N, L = np.real(N), np.real(L)
             # n_0N_frac.append([s_t[i], max(evalues_rho) / N, N / L, L])
             
-            if writefile:
-                with open(datafile, 'a') as df:
-                    df.write(f"{s_t[i]},{max(evalues_rho) / N}, {N/L}\n")
+            with open(datafile, 'a') as df:
+                df.write(f"{s_t[i]},{np.max(evalues_rho) / N}, {N/(L+1)}\n")
     else:
         # Buffers
         evals = []
@@ -396,28 +275,29 @@ def condensate_frac(L, matrix_type, mpi: bool = False, writefile: bool = True) -
             evalues, evectors = lattice.hamiltonian["exact"].get_eigsys()
 
             # get ground state of Hamiltonian
-            ground = evectors[:, np.where(evalues == min(evalues))][:, :, 0]
+            ground = evectors[:, np.where(evalues == np.min(evalues))][:, :, 0]
             ground = HBFockState(L=L, vector=ground, typ=ST.KET)
 
             # fill rho matrix for this s(t)
-            for j in range(L):
-                for l in range(L):
+            for j in range(L+1):
+                for l in range(L+1):
                     corr = lattice.correlator(j, l)
                     p = ground.dagger() @ corr @ ground
                     rho[j][l] = np.real(p)
 
-            rho = np.where(np.isnan(rho) == True, 0, rho)
+            # rho = np.where(np.isnan(rho) == True, 0, rho)
 
             # get rho evals
             evalues_rho = np.linalg.eigvals(rho)
+            # print(_my_s_t[i], evalues_rho)
             # get N
-            N = np.round(np.trace(rho))
+            N = np.trace(rho)
             # store s_t, condensation fraction, rho, L
             N, L = np.real(N), np.real(L)
 
             s_t_value[i] = _my_s_t[i]
-            cond_frac[i] = np.real(max(evalues_rho)) / N
-            density[i] = N/L
+            cond_frac[i] = np.real(np.max(evalues_rho)) / N
+            density[i] = N/(L + 1)
         COMM.Barrier()
 
         # Gather back the evals

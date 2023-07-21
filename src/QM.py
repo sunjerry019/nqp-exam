@@ -30,9 +30,6 @@ class State:
         elif typ == ST.KET:
             self.vector = self.vector.reshape((-1, 1))
 
-        # normalize the state
-        self.normalize()
-
         self.operator = Operator
 
     def normalize(self) -> State:
@@ -305,11 +302,11 @@ class Operator:
         else:
             if hermitian:
                 eigval, eigvec = scipy.sparse.linalg.eigsh(
-                    self.matrix, which="SM", k=self.matrix.shape[0] - 2
+                    self.matrix, which="LM", k=self.matrix.shape[0] - 1
                 )
             else:
                 eigval, eigvec = scipy.sparse.linalg.eigs(
-                    self.matrix, which="SM", k=self.matrix.shape[0] - 2
+                    self.matrix, which="LM", k=self.matrix.shape[0] - 1
                 )
 
             return eigval
@@ -325,11 +322,11 @@ class Operator:
         else:
             if hermitian:
                 eigval, eigvec = scipy.sparse.linalg.eigsh(
-                    self.matrix, which="SM", k=self.matrix.shape[0] - 2
+                    self.matrix, which="LM", k=self.matrix.shape[0] - 1
                 )
             else:
                 eigval, eigvec = scipy.sparse.linalg.eigs(
-                    self.matrix, which="SM", k=self.matrix.shape[0] - 2
+                    self.matrix, which="LM", k=self.matrix.shape[0] - 1
                 )
 
             return eigval, eigvec
@@ -371,7 +368,10 @@ class HBFockState(State):
         for i in range(1, L):
             state = np.kron(state, statevectors[vector[i]])
 
-        return HBFockState(L - 1, state, typ)
+        st = HBFockState(L - 1, state, typ)
+        st.normalize()
+
+        return st
 
     def expand_to(
         self, newL: int, before: list[HBFockState], after: list[HBFockState]
