@@ -306,7 +306,7 @@ class Lattice:
             os.path.join(HOME_FOLDER, "..", "plots", f"spectrum_{self.L}_" + "Exact" + "reps_" + str(rep_local) + ".png")
         )
 
-def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
+def condensate_frac(L, matrix_type, mpi: bool = False, writefile: bool = True) -> None:
     """
     provides plot for d)
     """
@@ -356,8 +356,9 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
             N, L = np.real(N), np.real(L)
             # n_0N_frac.append([s_t[i], max(evalues_rho) / N, N / L, L])
             
-            with open(datafile, 'a') as df:
-                df.write(f"{s_t[i]},{max(evalues_rho) / N}, {N/L}\n")
+            if writefile:
+                with open(datafile, 'a') as df:
+                    df.write(f"{s_t[i]},{max(evalues_rho) / N}, {N/L}\n")
     else:
         # Buffers
         evals = []
@@ -448,9 +449,10 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
         cond_frac = recvbuf_cond_frac.reshape(_shape_cond_frac[0] * _shape_cond_frac[1], *_shape_cond_frac[2:])
         density   = recvbuf_density.reshape(_shape_density[0] * _shape_density[1], *_shape_density[2:])
 
-        with open(datafile, 'a') as df:
-            for k in range(len(s_t_value)):
-                df.write(f"{s_t_value[k]},{cond_frac[k]},{density[k]}\n")
+        if writefile:
+            with open(datafile, 'a') as df:
+                for k in range(len(s_t_value)):
+                    df.write(f"{s_t_value[k]},{cond_frac[k]},{density[k]}\n")
         
 
 """if __name__ == "__main__":

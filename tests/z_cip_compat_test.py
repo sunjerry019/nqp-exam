@@ -23,5 +23,8 @@ def test_incompatibilities():
     lattice.build_hamiltonian_ed(t = 1, s = 1)
     eigv = lattice.hamiltonian["exact"].get_eigvals()
 
+    lattice = Lattice(L = L, type_ = "sparse", mpi = False)
+    condensate_frac(L = L, matrix_type = "dense", mpi = False, writefile = False)
+
 if __name__ == "__main__":
     test_incompatibilities()
