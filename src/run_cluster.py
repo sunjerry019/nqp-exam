@@ -6,10 +6,10 @@ from QM import *
 L = 2
 
 while True:
-    lattice = Lattice(L, "sparse", mpi = True)
+    lattice = Lattice(L, "sparse", mpi = False)
     lattice.spectrum("manual")
     lattice.spectrum("exact")
 
-    condensate_frac(L, matrix_type="dense", mpi = True)
+    condensate_frac(L, matrix_type="dense", mpi = False)
 
     L += 1

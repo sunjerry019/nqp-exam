@@ -191,9 +191,6 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
     provides plot for d)
     """
 
-    # storage for the cond frac of this L
-    # n_0N_frac = []
-
     datafile = os.path.join("..", "data", "CF", f"{L:02}.csv")
 
     if mpi:
@@ -226,15 +223,12 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
                     p = ground.dagger() @ corr @ ground
                     rho[j][l] = np.real(p)
 
-            # rho = np.where(np.isnan(rho) == True, 0, rho)
-
             # get rho evals
             evalues_rho = np.linalg.eigvals(rho)
             # get N
             N = np.trace(rho)
             # store s_t, condensation fraction, rho, L
             N, L = np.real(N), np.real(L)
-            # n_0N_frac.append([s_t[i], max(evalues_rho) / N, N / L, L])
             
             with open(datafile, 'a') as df:
                 df.write(f"{s_t[i]},{np.max(evalues_rho) / N}, {N/(L+1)}\n")
@@ -285,11 +279,9 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
                     p = ground.dagger() @ corr @ ground
                     rho[j][l] = np.real(p)
 
-            # rho = np.where(np.isnan(rho) == True, 0, rho)
 
             # get rho evals
             evalues_rho = np.linalg.eigvals(rho)
-            # print(_my_s_t[i], evalues_rho)
             # get N
             N = np.trace(rho)
             # store s_t, condensation fraction, rho, L
