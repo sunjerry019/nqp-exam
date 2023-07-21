@@ -30,9 +30,6 @@ class State:
         elif typ == ST.KET:
             self.vector = self.vector.reshape((-1, 1))
 
-        # normalize the state
-        self.normalize()
-
         self.operator = Operator
 
     def normalize(self) -> State:
@@ -371,7 +368,10 @@ class HBFockState(State):
         for i in range(1, L):
             state = np.kron(state, statevectors[vector[i]])
 
-        return HBFockState(L - 1, state, typ)
+        st = HBFockState(L - 1, state, typ)
+        st.normalize()
+
+        return st
 
     def expand_to(
         self, newL: int, before: list[HBFockState], after: list[HBFockState]
