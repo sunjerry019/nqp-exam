@@ -31,13 +31,18 @@ class State:
             self.vector = self.vector.reshape((-1, 1))
 
         # normalize the state
+        self.normalize()
+
+        self.operator = Operator
+
+    def normalize(self) -> State:
         if not np.any(np.iscomplex(self.vector)):
             self.vector = self.vector.astype(np.longdouble)
 
         self.vector /= np.linalg.norm(self.vector)
         assert np.isclose(np.linalg.norm(self.vector), 1)
 
-        self.operator = Operator
+        return self
 
     def dagger(self) -> State:
         newtype = ST.BRA if self.type == ST.KET else ST.KET
