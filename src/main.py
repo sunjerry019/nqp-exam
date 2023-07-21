@@ -321,6 +321,7 @@ def condensate_frac(L, matrix_type, mpi: bool = False, writefile: bool = True) -
         cond_frac = recvbuf_cond_frac.reshape(_shape_cond_frac[0] * _shape_cond_frac[1], *_shape_cond_frac[2:])
         density   = recvbuf_density.reshape(_shape_density[0] * _shape_density[1], *_shape_density[2:])
 
-        with open(datafile, 'a') as df:
-            for k in range(len(s_t_value)):
-                df.write(f"{s_t_value[k]},{cond_frac[k]},{density[k]}\n")
+        if writefile:
+            with open(datafile, 'a') as df:
+                for k in range(len(s_t_value)):
+                    df.write(f"{s_t_value[k]},{cond_frac[k]},{density[k]}\n")
