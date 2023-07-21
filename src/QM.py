@@ -7,6 +7,7 @@ import enum
 import numpy as np
 import scipy.sparse
 import scipy.linalg
+import scipy.sparse.linalg
 
 from typing import Union, Literal, overload
 
@@ -30,6 +31,15 @@ class State:
             self.vector = self.vector.reshape((-1, 1))
 
         self.operator = Operator
+
+    def normalize(self) -> State:
+        if not np.any(np.iscomplex(self.vector)):
+            self.vector = self.vector.astype(np.longdouble)
+
+        self.vector /= np.linalg.norm(self.vector)
+        assert np.isclose(np.linalg.norm(self.vector), 1)
+
+        return self
 
     def dagger(self) -> State:
         newtype = ST.BRA if self.type == ST.KET else ST.KET
@@ -118,10 +128,11 @@ class State:
         self.vector @= o.matrix
 
         return self
-    
+
     @overload
     def __matmul__(self, o: State) -> Union[float, complex]:
         pass
+
     @overload
     def __matmul__(self, o: State) -> Operator:
         pass
@@ -130,14 +141,16 @@ class State:
     def __matmul__(self, o: Operator) -> State:
         pass
 
-    def __matmul__(self, o: Union[Operator, State]) -> Union[Operator, State, Union[float, complex]]:
+    def __matmul__(
+        self, o: Union[Operator, State]
+    ) -> Union[Operator, State, Union[float, complex]]:
         if self.type == ST.BRA and isinstance(o, Operator):
             return type(self)(self.L, self.vector @ o.matrix, self.type)
         elif self.type == ST.KET and o.type == ST.BRA:
             return self.operator(self.L, self.vector @ o.vector)
         elif self.type == ST.BRA and o.type == ST.KET:
             return (self.vector @ o.vector).flatten()[0]
-        
+
         raise TypeError(f"MatMul not defined for {self.type} and {o}")
 
     # Comparisons
@@ -265,11 +278,21 @@ class Operator:
     def expand_to(self, newL: int, site: int) -> Operator:
         raise NotImplementedError("Not implemented")
 
+    @staticmethod
+    def ishermitian(sparse: bool, matrix: Union[np.ndarray, scipy.linalg.sparse.csc_matrix]) -> bool:
+        if sparse:
+            return Operator.ishermitian(sparse = False, matrix = matrix.todense())
+
+        try:
+            return scipy.linalg.ishermitian(matrix)
+        except AttributeError as e:
+            # We are on the cip pool with python 3.9 and scipy 1.3.3
+            # https://github.com/scipy/scipy/issues/7308#issue-222144044
+            return np.allclose(matrix, np.asmatrix(matrix).getH())
+
+
     def get_eigvals(self):
-        if self.sparse:
-            hermitian = scipy.linalg.ishermitian(self.matrix.todense())
-        else:
-            hermitian = scipy.linalg.ishermitian(self.matrix)
+        hermitian = Operator.ishermitian(self.sparse, self.matrix)
 
         if not self.sparse:
             if hermitian:
@@ -279,20 +302,17 @@ class Operator:
         else:
             if hermitian:
                 eigval, eigvec = scipy.sparse.linalg.eigsh(
-                    self.matrix, which="SM", k=self.matrix.shape[0] - 2
+                    self.matrix, which="LM", k=self.matrix.shape[0] - 1
                 )
             else:
                 eigval, eigvec = scipy.sparse.linalg.eigs(
-                    self.matrix, which="SM", k=self.matrix.shape[0] - 2
+                    self.matrix, which="LM", k=self.matrix.shape[0] - 1
                 )
 
             return eigval
 
     def get_eigsys(self):
-        if self.sparse:
-            hermitian = scipy.linalg.ishermitian(self.matrix.todense())
-        else:
-            hermitian = scipy.linalg.ishermitian(self.matrix)
+        hermitian = Operator.ishermitian(self.sparse, self.matrix)
 
         if not self.sparse:
             if hermitian:
@@ -302,11 +322,11 @@ class Operator:
         else:
             if hermitian:
                 eigval, eigvec = scipy.sparse.linalg.eigsh(
-                    self.matrix, which="SM", k=self.matrix.shape[0] - 2
+                    self.matrix, which="LM", k=self.matrix.shape[0] - 1
                 )
             else:
                 eigval, eigvec = scipy.sparse.linalg.eigs(
-                    self.matrix, which="SM", k=self.matrix.shape[0] - 2
+                    self.matrix, which="LM", k=self.matrix.shape[0] - 1
                 )
 
             return eigval, eigvec
@@ -348,7 +368,10 @@ class HBFockState(State):
         for i in range(1, L):
             state = np.kron(state, statevectors[vector[i]])
 
-        return HBFockState(L - 1, state, typ)
+        st = HBFockState(L - 1, state, typ)
+        st.normalize()
+
+        return st
 
     def expand_to(
         self, newL: int, before: list[HBFockState], after: list[HBFockState]
