@@ -191,10 +191,7 @@ def condensate_frac(L, matrix_type, mpi: bool = False, writefile: bool = True) -
     provides plot for d)
     """
 
-    # storage for the cond frac of this L
-    # n_0N_frac = []
-
-    datafile = os.path.join("..", "data", "CF_new", f"{L}.csv")
+    datafile = os.path.join("..", "data", "CF", f"{L:02}.csv")
 
     if mpi:
         COMM = MPI.COMM_WORLD
@@ -226,15 +223,12 @@ def condensate_frac(L, matrix_type, mpi: bool = False, writefile: bool = True) -
                     p = ground.dagger() @ corr @ ground
                     rho[j][l] = np.real(p)
 
-            # rho = np.where(np.isnan(rho) == True, 0, rho)
-
             # get rho evals
             evalues_rho = np.linalg.eigvals(rho)
             # get N
             N = np.trace(rho)
             # store s_t, condensation fraction, rho, L
             N, L = np.real(N), np.real(L)
-            # n_0N_frac.append([s_t[i], max(evalues_rho) / N, N / L, L])
             
             with open(datafile, 'a') as df:
                 df.write(f"{s_t[i]},{np.max(evalues_rho) / N}, {N/(L+1)}\n")
@@ -285,11 +279,9 @@ def condensate_frac(L, matrix_type, mpi: bool = False, writefile: bool = True) -
                     p = ground.dagger() @ corr @ ground
                     rho[j][l] = np.real(p)
 
-            # rho = np.where(np.isnan(rho) == True, 0, rho)
 
             # get rho evals
             evalues_rho = np.linalg.eigvals(rho)
-            # print(_my_s_t[i], evalues_rho)
             # get N
             N = np.trace(rho)
             # store s_t, condensation fraction, rho, L
@@ -329,10 +321,9 @@ def condensate_frac(L, matrix_type, mpi: bool = False, writefile: bool = True) -
         cond_frac = recvbuf_cond_frac.reshape(_shape_cond_frac[0] * _shape_cond_frac[1], *_shape_cond_frac[2:])
         density   = recvbuf_density.reshape(_shape_density[0] * _shape_density[1], *_shape_density[2:])
 
-        if writefile:
-            with open(datafile, 'a') as df:
-                for k in range(len(s_t_value)):
-                    df.write(f"{s_t_value[k]},{cond_frac[k]},{density[k]}\n")
+        with open(datafile, 'a') as df:
+            for k in range(len(s_t_value)):
+                df.write(f"{s_t_value[k]},{cond_frac[k]},{density[k]}\n")
         
 
 """if __name__ == "__main__":
