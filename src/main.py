@@ -220,8 +220,8 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
             ground = HBFockState(L=L, vector=ground, typ=ST.KET)
 
             # fill rho matrix for this s(t)
-            for j in range(L):
-                for l in range(L):
+            for j in range(L + 1):
+                for l in range(L + 1):
                     corr = lattice.correlator(j, l)
                     p = ground.dagger() @ corr @ ground
                     rho[j][l] = np.real(p)
@@ -279,8 +279,8 @@ def condensate_frac(L, matrix_type, mpi: bool = False) -> None:
             ground = HBFockState(L=L, vector=ground, typ=ST.KET)
 
             # fill rho matrix for this s(t)
-            for j in range(L):
-                for l in range(L):
+            for j in range(L+1):
+                for l in range(L+1):
                     corr = lattice.correlator(j, l)
                     p = ground.dagger() @ corr @ ground
                     rho[j][l] = np.real(p)
