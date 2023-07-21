@@ -16,3 +16,8 @@ while True:
     condensate_frac(L, matrix_type="dense", mpi = True)
 
     L += 1"""
+
+for L in range(2,12):
+    lattice = Lattice(L, "sparse", mpi = True)
+    lattice.spectrum("manual")
+    lattice.spectrum("exact")

@@ -302,11 +302,11 @@ class Operator:
         else:
             if hermitian:
                 eigval, eigvec = scipy.sparse.linalg.eigsh(
-                    self.matrix, which="SM", k=self.matrix.shape[0] - 2
+                    self.matrix, which="LM", k=self.matrix.shape[0] - 1
                 )
             else:
                 eigval, eigvec = scipy.sparse.linalg.eigs(
-                    self.matrix, which="SM", k=self.matrix.shape[0] - 2
+                    self.matrix, which="LM", k=self.matrix.shape[0] - 1
                 )
 
             return eigval
@@ -322,11 +322,11 @@ class Operator:
         else:
             if hermitian:
                 eigval, eigvec = scipy.sparse.linalg.eigsh(
-                    self.matrix, which="SM", k=self.matrix.shape[0] - 2
+                    self.matrix, which="LM", k=self.matrix.shape[0] - 1
                 )
             else:
                 eigval, eigvec = scipy.sparse.linalg.eigs(
-                    self.matrix, which="SM", k=self.matrix.shape[0] - 2
+                    self.matrix, which="LM", k=self.matrix.shape[0] - 1
                 )
 
             return eigval, eigvec

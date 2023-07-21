@@ -23,12 +23,12 @@ def plot_manual() -> None:
     for filename in glob.glob(os.path.join(dir, "s_t",'*_manual.csv')):
         s_t.append(np.loadtxt(filename, delimiter = ','))
 
-    for filename in glob.glob(os.path.join(dir, "evals_new",'*_manual.csv')):
+    for filename in glob.glob(os.path.join(dir, "evals_new_SM_prime_prime",'*_manual.csv')):
         evals_new.append(np.loadtxt(filename, delimiter = ','))
 
     P = Plotter(figsize=(6*2, 4*5), nrows=5, ncols=2, usetex=True)
     
-    for i in range(5):
+    for i in range(3):
         for j in range(2):
             L = i*2+j+1
 
@@ -81,7 +81,7 @@ def plot_exact(manual_subset: bool) -> None:
     for filename in glob.glob(os.path.join(dir, "s_t",'*_exact.csv')):
         s_t.append(np.loadtxt(filename, delimiter = ','))
 
-    for filename in glob.glob(os.path.join(dir, "evals_new",'*_exact.csv')):
+    for filename in glob.glob(os.path.join(dir, "evals_new_SM_prime_prime",'*_exact.csv')):
         evals_new.append(np.loadtxt(filename, delimiter = ','))
 
     # option to only plot the first two plots, since they need different ylims to be sensible
@@ -94,10 +94,16 @@ def plot_exact(manual_subset: bool) -> None:
 
     P = Plotter(figsize=(6*2, 4*rows), nrows=rows, ncols=2, usetex=True, squeeze = False)
     
+    break_call = False
     for i in range(rows):
+        if break_call == True:
+            break
         for j in range(2):
             # this L is not the system size, but the list index. the list was started at L = 2, therefore the "true" L is L+2 (0 indexing as well)
             L = i*2+j
+            if L >= len(evals_new):
+                break_call = True
+                break
 
             P.ax[i][j].plot( 
                 s_t[L], evals_new[L][0],
@@ -252,7 +258,7 @@ def plot_cf() -> None:
     G.savefig(os.path.join(HOME_FOLDER, "..", "plots", f"condensate_fraction.pdf"),bbox_inches="tight")
 
 if __name__ == "__main__":
-    plot_manual()
-    plot_exact(manual_subset = True)
+    plot_manual() 
     plot_exact(manual_subset = False)
-    plot_cf()
+    plot_exact(manual_subset = True)
+    # plot_cf()
