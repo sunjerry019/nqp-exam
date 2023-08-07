@@ -52,6 +52,8 @@ class Lattice:
                 if i == j + 1 or i == j - 1:
                     if i <= self.L - 1 and j <= self.L - 1:
                         H[i][j] = -t
+                elif (i == self.L-1 and j == 0) or (j == self.L-1 and i == 0):
+                    H[i][j] = -t
                 elif i == self.L or j == self.L: 
                     H[i][j] = -s
 
