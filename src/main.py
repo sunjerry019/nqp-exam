@@ -49,11 +49,11 @@ class Lattice:
 
         for i in range(self.L + 1):
             for j in range(self.L + 1):
-                if i != j:
+                if i == j + 1 or i == j - 1:
                     if i <= self.L - 1 and j <= self.L - 1:
                         H[i][j] = -t
-                    else:
-                        H[i][j] = -s
+                elif i == self.L or j == self.L: 
+                    H[i][j] = -s
 
         self.hamiltonian["manual"] = Operator(L=self.L + 1, matrix=H, sparse=False)
 

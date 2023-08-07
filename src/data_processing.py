@@ -24,7 +24,7 @@ def plot_manual() -> None:
     for filename in glob.glob(os.path.join(dir, "s_t_final",'*_manual.csv')):
         s_t.append(np.loadtxt(filename, delimiter = ','))
 
-    for filename in glob.glob(os.path.join(dir, "evals_new_final",'*_manual.csv')):
+    for filename in glob.glob(os.path.join(dir, "post_check",'*_manual.csv')):
         evals_new.append(np.loadtxt(filename, delimiter = ','))
 
     P = Plotter(figsize=(6*2, 4*5), nrows=5, ncols=2, usetex=True)
@@ -83,7 +83,7 @@ def plot_exact(manual_subset: bool) -> None:
     for filename in glob.glob(os.path.join(dir, "s_t_final",'*_exact.csv')):
         s_t.append(np.loadtxt(filename, delimiter = ','))
 
-    for filename in glob.glob(os.path.join(dir, "evals_new_final",'*_exact.csv')):
+    for filename in glob.glob(os.path.join(dir, "post_check",'*_exact.csv')):
         evals_new.append(np.loadtxt(filename, delimiter = ','))
 
     # option to only plot the first two plots, since they need different ylims to be sensible
@@ -225,7 +225,7 @@ def plot_cf() -> None:
     G.savefig(os.path.join(HOME_FOLDER, "..", "plots", f"condensate_fraction.pdf"),bbox_inches="tight")
 
 if __name__ == "__main__":
-    #plot_manual() 
+    plot_manual() 
     #plot_exact(manual_subset = False)
     #plot_exact(manual_subset = True)
-    plot_cf()
+    #plot_cf()
